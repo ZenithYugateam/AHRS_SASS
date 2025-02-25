@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 function CandidateHome() {
   const [jobData, setJobData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const scrollRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -14,21 +15,19 @@ function CandidateHome() {
         const response = await axios.get(
           "https://y9mnrdc2qd.execute-api.us-east-1.amazonaws.com/default/get_all_company_details",
           {
-            timeout: 5000, // Add a timeout of 5 seconds
+            timeout: 5000,
             headers: {
               "Content-Type": "application/json",
             },
           }
         );
-    
-        console.log("API Response:", response);
+
         if (response.data && response.data.data) {
           setJobData(response.data.data);
         } else {
           setError("No job data found");
         }
       } catch (err) {
-        console.error("Network/API Error:", err);
         if (err.code === "ECONNABORTED") {
           setError("Request timed out. Please try again later.");
         } else {
@@ -38,8 +37,6 @@ function CandidateHome() {
         setLoading(false);
       }
     };
-    
-    
 
     fetchData();
   }, []);
@@ -50,6 +47,10 @@ function CandidateHome() {
 
   const scrollRight = () => {
     scrollRef.current.scrollBy({ left: 450, behavior: "smooth" });
+  };
+
+  const handleJobClick = (job) => {
+    navigate('/upload-resume', { state: { job } });
   };
 
   return (
@@ -65,7 +66,7 @@ function CandidateHome() {
         </div>
 
         <div className="relative overflow-hidden">
-        <div className="relative overflow-hidden pr-5">
+          <div className="relative overflow-hidden pr-5">
             {loading ? (
               <p className="text-white">Loading jobs...</p>
             ) : error ? (
@@ -76,10 +77,10 @@ function CandidateHome() {
                 ref={scrollRef}
               >
                 {jobData.map((job, index) => (
-                  <Link
+                  <div
                     key={index}
-                    to="/job-process"
-                    className="lg:min-w-[443px] lg:min-h-[251px] min-w-[343px] min-h-[151px] px-5 lg:px-10 py-5 bg-gradient-to-r from-[#F700FC] to-[#2941B9] rounded-lg flex flex-col justify-between"
+                    onClick={() => handleJobClick(job)}
+                    className="cursor-pointer lg:min-w-[443px] lg:min-h-[251px] min-w-[343px] min-h-[151px] px-5 lg:px-10 py-5 bg-gradient-to-r from-[#F700FC] to-[#2941B9] rounded-lg flex flex-col justify-between"
                   >
                     <div className="w-full flex justify-between">
                       <div className="text-white">
@@ -115,7 +116,7 @@ function CandidateHome() {
                         <p>{job.job_description || "No description available"}</p>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}
@@ -160,25 +161,10 @@ function CandidateHome() {
             </svg>
           </button>
         </div>
-
-        <div className="mt-16">
-          <h2 className="text-2xl font-bold text-white mb-8 text-center">Featured Job Postings</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=300',
-              'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=300',
-              'https://images.unsplash.com/photo-1552664730-d307ca884978?w=300',
-              'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=300'
-            ].map((img, index) => (
-              <div key={index} className="aspect-square bg-[#1A1528] rounded-xl overflow-hidden">
-                <img src={img} alt="" className="w-full h-full object-cover object-center" />
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
 }
 
 export default CandidateHome;
+  

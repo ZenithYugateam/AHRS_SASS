@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
@@ -8,6 +7,7 @@ import InterviewScreen from './pages/InterviewScreen';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import CandidateDashboard from './pages/CandidateDashboard';
+import ResumeUpload from './pages/ResumeUpload';
 
 function App() {
   return (
@@ -21,6 +21,7 @@ function App() {
           <Route path="candidate" element={<CandidateHome />} />
           <Route path="interview" element={<InterviewScreen />} />
           <Route path="candidate-dashboard" element={<CandidateDashboard />} />
+          <Route path="upload-resume" element={<ResumeUpload />} /> 
         </Route>
       </Routes>
     </Router>
