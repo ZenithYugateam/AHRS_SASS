@@ -10,12 +10,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "framer-motion": "^12.4.7",
     "lucide-react": "^0.344.0",
+    "mammoth": "^1.9.0",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^2.16.105",
     "react": "^18.3.1",
+    "react-circular-progressbar": "^2.2.0",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.22.3",
     "react-speech-recognition": "^3.10.0",
-    "regenerator-runtime": "^0.14.1"
+    "regenerator-runtime": "^0.14.1",
+    "textract": "^2.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

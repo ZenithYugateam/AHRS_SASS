@@ -1,0 +1,213 @@
+import React, { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { motion } from 'framer-motion';
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set worker source dynamically
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+function ResumeUpload() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { job } = location.state || {};
+  const [resume, setResume] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [matchPercentage, setMatchPercentage] = useState<number | null>(null);
+
+  const handleResumeUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setResume(e.target.files[0]);
+    }
+  };
+
+  // Extract text from PDF using pdfjs-dist
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    const fileReader = new FileReader();
+    return new Promise((resolve, reject) => {
+      fileReader.onload = async () => {
+        try {
+          const typedarray = new Uint8Array(fileReader.result as ArrayBuffer);
+          const pdf = await pdfjsLib.getDocument(typedarray).promise;
+          let text = '';
+
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            const pageText = content.items.map((item: any) => item.str).join(' ');
+            text += pageText + '\n';
+          }
+
+          resolve(text);
+        } catch (err) {
+          reject(err);
+        }
+      };
+
+      fileReader.onerror = reject;
+      fileReader.readAsArrayBuffer(file);
+    });
+  };
+
+  const analyzeResumeWithAI = async (resumeText: string, jobDescription: string) => {
+    try {
+      const apiKey = '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'; // Replace with your actual API key
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an AI assistant that evaluates if a resume matches a job description and provides a match percentage.',
+            },
+            {
+              role: 'user',
+              content: `Job Description:\n${jobDescription}\n\nResume:\n${resumeText}\n\nProvide a match percentage from 0 to 100, indicating how well the resume matches the job description.`,
+            },
+          ],
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const aiMessage = response.data.choices[0].message.content;
+      console.log("***** ai mesage ", aiMessage);
+      const percentageMatch = parseFloat(
+        (aiMessage.match(/(\d+)%/g) || []).pop()?.replace('%', '') || '0'
+      );
+      
+      console.log("***** ai percentage ", percentageMatch);
+      return percentageMatch;
+    } catch (error) {
+      console.error('Error analyzing resume with AI:', error);
+      return 0;
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!resume) return;
+    setLoading(true);
+
+    try {
+      const resumeText = await extractTextFromPDF(resume);
+      const percentage = await analyzeResumeWithAI(resumeText, job.job_description || '');
+      setMatchPercentage(percentage);
+    } catch (error) {
+      console.error('Error processing PDF:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLater = async () => {
+    try {
+      await axios.post('https://example.com/api/notify-later', { jobId: job.id });
+      alert('You will be notified later.');
+    } catch (error) {
+      console.error('API call failed:', error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#0F0B1E] to-[#2B2D42] flex flex-col justify-center items-center px-6">
+      <motion.h1
+        initial={{ opacity: 0, y: -30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1 }}
+        className="text-4xl font-extrabold text-white mb-8 drop-shadow-lg"
+      >
+        Upload Your Resume for <span className="text-blue-400">{job.job_title}</span>
+      </motion.h1>
+
+      {loading ? (
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.5, repeat: Infinity, repeatType: 'reverse' }}
+          className="flex flex-col items-center gap-4 text-white"
+        >
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+          <p>Analyzing your resume...</p>
+        </motion.div>
+      ) : matchPercentage !== null ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="flex flex-col items-center gap-6 text-white"
+        >
+          <div className="w-32 h-32">
+            <CircularProgressbar
+              value={matchPercentage}
+              text={`${matchPercentage.toFixed(0)}%`}
+              styles={buildStyles({
+                textColor: '#ffffff',
+                pathColor: matchPercentage >= 30 ? '#4CAF50' : '#FF5252',
+                trailColor: '#2B2D42',
+              })}
+            />
+          </div>
+
+          {matchPercentage >= 30 ? (
+            <div className="text-center">
+              <p className="text-lg font-semibold">Would you like to proceed now or later?</p>
+              <div className="flex gap-4 mt-4">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => navigate('/job-process')}
+                  className="px-6 py-3 bg-green-500 rounded-lg shadow-lg text-white hover:bg-green-600"
+                >
+                  Proceed Now
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleLater}
+                  className="px-6 py-3 bg-yellow-500 rounded-lg shadow-lg text-white hover:bg-yellow-600"
+                >
+                  Later
+                </motion.button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-red-500 text-lg font-semibold">
+              Your resume does not meet the required match percentage (30%).
+            </p>
+          )}
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ y: 50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.7 }}
+          className="flex flex-col items-center bg-[#1E1E2F] p-8 rounded-xl shadow-lg"
+        >
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={handleResumeUpload}
+            className="mb-4 text-white file:bg-blue-500 file:text-white file:rounded-lg file:px-4 file:py-2 cursor-pointer"
+          />
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={handleSubmit}
+            className="px-6 py-3 bg-blue-500 rounded-lg text-white font-semibold shadow-lg hover:bg-blue-600 transition"
+          >
+            Submit Resume
+          </motion.button>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+export default ResumeUpload;
