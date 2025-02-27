@@ -99,6 +99,11 @@ function ResumeUpload() {
       const resumeText = await extractTextFromPDF(resume);
       const percentage = await analyzeResumeWithAI(resumeText, job.job_description || '');
       setMatchPercentage(percentage);
+      setTimeout(() => {
+        if (percentage < 30) {
+          navigate('/candidate');
+        }
+      }, 3000);
     } catch (error) {
       console.error('Error processing PDF:', error);
     } finally {
@@ -112,6 +117,8 @@ function ResumeUpload() {
       alert('You will be notified later.');
     } catch (error) {
       console.error('API call failed:', error);
+    } finally {
+      navigate('/candidate')
     }
   };
 
@@ -162,7 +169,7 @@ function ResumeUpload() {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => navigate('/job-process')}
+                  onClick={() => navigate('/interview')}
                   className="px-6 py-3 bg-green-500 rounded-lg shadow-lg text-white hover:bg-green-600"
                 >
                   Proceed Now
