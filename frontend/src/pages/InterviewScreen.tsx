@@ -55,7 +55,7 @@ function InterviewScreen() {
   const STORE_INTERVIEW_ENDPOINT =
     "https://vbajfgmatb.execute-api.us-east-1.amazonaws.com/prod/storeInterview";
 
-  // Pre-signed URL endpoint (used to get the upload URL for S3)
+  // Updated pre-signed URL endpoint (note the path "singedurl")
   const PRESIGNED_URL_ENDPOINT =
     "https://071h9ufh65.execute-api.us-east-1.amazonaws.com/singedurl";
 
@@ -121,12 +121,12 @@ function InterviewScreen() {
     }
   }, [timeLeft, isInterviewStarted, isPaused]);
 
-  // Update answer from transcript (voice mode)
+  // Update answer from transcript
   useEffect(() => {
     if (isVoiceMode) setAnswer(transcript);
   }, [transcript, isVoiceMode]);
 
-  // When the current question changes, read it aloud and reset the timer.
+  // Read new question when it changes
   useEffect(() => {
     if (isInterviewStarted && questions[currentQuestion]) {
       readQuestion();
@@ -277,7 +277,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
       alert("Questions are still loading. Please wait.");
       return;
     }
-    // Generate and set candidateId here before any uploads occur.
+    // Generate and set candidateId before uploading any videos.
     const generatedCandidateId = "cand_" + Math.random().toString(36).substr(2, 9);
     setCandidateId(generatedCandidateId);
     setIsInterviewStarted(true);
