@@ -491,3 +491,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
 }
 
 export default InterviewScreen;
+
+function uploadVideoToS3(blob: Blob) {
+  throw new Error("Function not implemented.");
+}
