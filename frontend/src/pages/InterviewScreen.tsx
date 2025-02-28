@@ -16,7 +16,7 @@ interface ResponseData {
   questionId: number;
   answer: string;
   correctAnswer?: string;
-  videoData?: string;
+  videoUrl?: string;  // S3 URL after video upload via pre-signed URL
   dynamicEvaluation?: string;
   dynamicAccuracy?: number;
 }
@@ -38,6 +38,7 @@ function InterviewScreen() {
   const [candidateId, setCandidateId] = useState<string>("");
   const [isPaused, setIsPaused] = useState(false);
   const [pauseMessage, setPauseMessage] = useState("");
+  const [submissionLoading, setSubmissionLoading] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -50,13 +51,16 @@ function InterviewScreen() {
   // --- Configuration Constants ---
   const OPENAI_API_KEY =
     "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";
-  // Use your provided constant presigned URL
-
+  
   const STORE_INTERVIEW_ENDPOINT =
     "https://vbajfgmatb.execute-api.us-east-1.amazonaws.com/prod/storeInterview";
 
+  // Pre-signed URL endpoint (used to get the upload URL for S3)
+  const PRESIGNED_URL_ENDPOINT =
+    "https://071h9ufh65.execute-api.us-east-1.amazonaws.com/singedurl";
+
   // Limit dynamic question generation
-  const MAX_DYNAMIC_COUNT = 3;
+  const MAX_DYNAMIC_COUNT = 1;
   const [dynamicCount, setDynamicCount] = useState(0);
 
   useEffect(() => {
@@ -76,7 +80,7 @@ function InterviewScreen() {
         let apiQuestions: Question[] = [];
         if (response.data && response.data.questions) {
           apiQuestions = response.data.questions.map((q: any, index: number) => ({
-            id: index + 2, // default question gets id 1
+            id: index + 2,
             text: q.M.question.S,
             correctAnswer: q.M.answer.S,
             options: q.M.options ? q.M.options : undefined,
@@ -97,7 +101,6 @@ function InterviewScreen() {
       })
       .catch((error) => {
         console.error("Error fetching questions:", error);
-        // Fallback question
         setQuestions([
           {
             id: 1,
@@ -118,12 +121,12 @@ function InterviewScreen() {
     }
   }, [timeLeft, isInterviewStarted, isPaused]);
 
-  // Update answer from transcript in voice mode.
+  // Update answer from transcript (voice mode)
   useEffect(() => {
     if (isVoiceMode) setAnswer(transcript);
   }, [transcript, isVoiceMode]);
 
-  // When current question changes, read it aloud and reset timer.
+  // When the current question changes, read it aloud and reset the timer.
   useEffect(() => {
     if (isInterviewStarted && questions[currentQuestion]) {
       readQuestion();
@@ -138,9 +141,36 @@ function InterviewScreen() {
     }
   };
 
-  // --- Video Upload Flow ---
+  // --- Pre-signed URL Upload Flow ---
+  const uploadVideoToS3 = async (videoBlob: Blob): Promise<string> => {
+    try {
+      const currentQuestionId = questions[currentQuestion].id.toString();
+      console.log("Requesting presigned URL with:", { candidateId, questionId: currentQuestionId });
+      const presignedResponse = await axios.post(
+        PRESIGNED_URL_ENDPOINT,
+        { candidateId, questionId: currentQuestionId },
+        { headers: { "Content-Type": "application/json" } }
+      );
+      console.log("Presigned response:", presignedResponse.data);
+      const { uploadURL, fileName } = presignedResponse.data;
+      const putResponse = await fetch(uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": "video/webm" },
+        body: videoBlob,
+      });
+      if (!putResponse.ok) {
+        throw new Error(`S3 upload failed with status ${putResponse.status}`);
+      }
+      const videoUrl = `https://avhrsvideobucket.s3.amazonaws.com/${fileName}`;
+      console.log("Uploaded video URL:", videoUrl);
+      return videoUrl;
+    } catch (error) {
+      console.error("Error uploading video to S3:", error);
+      throw error;
+    }
+  };
 
-
+  // --- Video Recording Flow ---
   const startVideoRecording = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -158,7 +188,7 @@ function InterviewScreen() {
           const videoUrl = await uploadVideoToS3(blob);
           setResponses((prev) => {
             const currentResponse = prev[prev.length - 1] || {};
-            return [...prev.slice(0, -1), { ...currentResponse, videoData: videoUrl }];
+            return [...prev.slice(0, -1), { ...currentResponse, videoUrl }];
           });
         } catch (error) {
           console.error("Error during video upload:", error);
@@ -199,11 +229,9 @@ function InterviewScreen() {
       if (dynamicCount >= MAX_DYNAMIC_COUNT)
         return { dynamicQuestion: "", dynamicEvaluation: "", dynamicAccuracy: 0 };
       const prompt = `
-You are an experienced technical interviewer.
-Based on the candidate's response:
-"${candidateAnswer}"
-Please generate one follow-up question (do not repeat the original question) that naturally delves deeper into the candidate's project experience.
-Also, provide a brief evaluation comment with an accuracy rating (percentage) reflecting how well the candidate answered.
+You are a friendly and insightful interviewer. Based on the candidate's response: "${candidateAnswer}",
+ask one natural follow-up question that delves deeper into their project experience without repeating the original question.
+Also, provide a brief conversational evaluation with an accuracy rating (percentage) indicating how well the candidate answered.
 Format your response as:
 Follow-up Question: <your question>
 Evaluation: <your evaluation comment>. Accuracy: <percentage>%
@@ -249,6 +277,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
       alert("Questions are still loading. Please wait.");
       return;
     }
+    // Generate and set candidateId here before any uploads occur.
     const generatedCandidateId = "cand_" + Math.random().toString(36).substr(2, 9);
     setCandidateId(generatedCandidateId);
     setIsInterviewStarted(true);
@@ -307,13 +336,13 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
       alert("Candidate ID or responses are missing. Please complete the interview before submitting.");
       return;
     }
+    setSubmissionLoading(true);
     try {
-      // Include jobId in the payload
       const payload = { candidateId, jobId: "101", responses };
       console.log("Submitting payload:", payload);
       const lambdaResponse = await axios.post(
         STORE_INTERVIEW_ENDPOINT,
-        { body: JSON.stringify(payload) },
+        payload,
         { headers: { "Content-Type": "application/json" } }
       );
       const data = lambdaResponse.data;
@@ -323,9 +352,10 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     } catch (error) {
       console.error("Error during submission:", error);
       setValidationResult({ error: "Submission failed" });
+    } finally {
+      setSubmissionLoading(false);
     }
   };
-  
 
   return (
     <div className="min-h-screen bg-[#0F0B1E] text-white p-8">
@@ -366,12 +396,10 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
                         {response.dynamicAccuracy ? ` (Accuracy: ${response.dynamicAccuracy}%)` : ""}
                       </p>
                     )}
-                    {response.videoData && (
-                      <video
-                        controls
-                        className="w-full h-48 bg-black rounded-lg object-cover mt-2"
-                        src={response.videoData}
-                      />
+                    {response.videoUrl && (
+                      <div className="mt-2 text-sm text-gray-400">
+                        Video S3 URL: {response.videoUrl}
+                      </div>
                     )}
                   </div>
                 ))}
@@ -379,9 +407,10 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
               {!submitted && (
                 <button
                   onClick={submitInterview}
+                  disabled={submissionLoading}
                   className="mt-6 px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg hover:from-green-600 hover:to-blue-600 transition-colors"
                 >
-                  Submit Interview
+                  {submissionLoading ? "Submitting..." : "Submit Interview"}
                 </button>
               )}
               {validationResult && (
