@@ -27,10 +27,12 @@ import Features from './pages/Features';
 import Pricing from './pages/Pricing';
 import About from './pages/About';
 import Contact from './pages/Contact';
+import Login from './pages/Login';
 
 function Landingpage() {
   const [currentPage, setCurrentPage] = useState('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [loginType, setLoginType] = useState<'admin' | 'candidate' | 'company' | null>(null);
 
   const renderPage = () => {
     switch(currentPage) {
@@ -44,9 +46,16 @@ function Landingpage() {
         return <About />;
       case 'contact':
         return <Contact />;
+      case 'login':
+        return <Login type={loginType || 'candidate'} />;
       default:
         return <Home />;
     }
+  };
+
+  const handleLoginClick = (type: 'admin' | 'candidate' | 'company') => {
+    setLoginType(type);
+    setCurrentPage('login');
   };
 
   return (
@@ -110,12 +119,36 @@ function Landingpage() {
             </Button>
           </div>
           
-          <Button 
-            className="bg-purple-600 hover:bg-purple-700 hidden md:flex"
-            onClick={() => window.open('#', '_blank')}
-          >
-            Get Started
-          </Button>
+          {/* Login Dropdown */}
+          <div className="relative group hidden md:block">
+            <Button 
+              className="bg-purple-600 hover:bg-purple-700"
+            >
+              Login
+            </Button>
+            <div className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-800 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+              <div className="py-1">
+                <button 
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-purple-600 hover:text-white"
+                  onClick={() => handleLoginClick('admin')}
+                >
+                  Admin Login
+                </button>
+                <button 
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-purple-600 hover:text-white"
+                  onClick={() => handleLoginClick('candidate')}
+                >
+                  Candidate Login
+                </button>
+                <button 
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-purple-600 hover:text-white"
+                  onClick={() => handleLoginClick('company')}
+                >
+                  Company Login
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         
         {/* Mobile Navigation */}
@@ -176,12 +209,41 @@ function Landingpage() {
             >
               Contact
             </a>
-            <Button 
-              className="bg-purple-600 hover:bg-purple-700 w-full"
-              onClick={() => window.open('#', '_blank')}
-            >
-              Get Started
-            </Button>
+            <div className="pt-2 border-t border-gray-800">
+              <p className="text-sm text-gray-400 mb-2">Login as:</p>
+              <div className="flex flex-col space-y-2">
+                <Button 
+                  variant="outline" 
+                  className="justify-start border-gray-700 hover:bg-purple-600 hover:text-white"
+                  onClick={() => {
+                    handleLoginClick('admin');
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Admin Login
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="justify-start border-gray-700 hover:bg-purple-600 hover:text-white"
+                  onClick={() => {
+                    handleLoginClick('candidate');
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Candidate Login
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="justify-start border-gray-700 hover:bg-purple-600 hover:text-white"
+                  onClick={() => {
+                    handleLoginClick('company');
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Company Login
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </header>
