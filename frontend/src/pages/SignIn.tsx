@@ -1,79 +1,150 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Sun, Moon, Eye, EyeOff } from 'lucide-react';
 
 function SignIn() {
-  const [credentials, setCredentials] = useState({
-    identifier: '',
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
     password: ''
   });
-  const navigate = useNavigate();
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Add authentication logic here
-    navigate('/candidate-dashboard');
+    // Handle form submission
+    console.log('Form submitted:', formData);
   };
 
   return (
-    <div className="min-h-screen bg-[#0F0B1E] flex items-center justify-center px-4">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h2 className="text-4xl font-bold">
-            <span className="text-white">Si</span>
-            <span className="text-purple-500">gn</span>
-            <span className="text-white"> in</span>
-          </h2>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      isDarkMode 
+        ? 'bg-gradient-to-br from-gray-900 to-gray-800 text-white' 
+        : 'bg-gradient-to-br from-blue-50 to-blue-100 text-gray-900'
+    }`}>
+      <button
+        onClick={() => setIsDarkMode(!isDarkMode)}
+        className="absolute top-4 right-4 p-2 rounded-full hover:bg-opacity-10 hover:bg-white transition-colors"
+      >
+        {isDarkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+      </button>
+
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className={`w-full max-w-md p-8 rounded-2xl shadow-xl ${
+          isDarkMode 
+            ? 'bg-gray-800 bg-opacity-50 backdrop-blur-lg' 
+            : 'bg-white'
+        }`}>
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold mb-2">
+              Welcome <span className={isDarkMode ? 'text-blue-400' : 'text-blue-600'}>back</span>
+            </h1>
+            <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              Your next career opportunity awaits
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="identifier" className="text-white">
+              <label className={`block text-sm font-medium mb-2 ${
+                isDarkMode ? 'text-gray-300' : 'text-gray-700'
+              }`}>
                 Email /Username /Mobile no.
               </label>
               <input
-                id="identifier"
                 type="text"
-                required
-                className="appearance-none relative block w-full px-3 py-3 mt-1 bg-[#1A1528] border border-gray-700 placeholder-gray-500 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                value={credentials.identifier}
-                onChange={(e) => setCredentials({ ...credentials, identifier: e.target.value })}
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                className={`w-full px-4 py-3 rounded-lg ${
+                  isDarkMode 
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                    : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
+                } border focus:ring-2 focus:ring-blue-500 transition-colors`}
+                placeholder="Enter your email or username"
               />
             </div>
+
             <div>
-              <label htmlFor="password" className="text-white">
+              <label className={`block text-sm font-medium mb-2 ${
+                isDarkMode ? 'text-gray-300' : 'text-gray-700'
+              }`}>
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                required
-                className="appearance-none relative block w-full px-3 py-3 mt-1 bg-[#1A1528] border border-gray-700 placeholder-gray-500 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                value={credentials.password}
-                onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 rounded-lg ${
+                    isDarkMode 
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' 
+                      : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
+                  } border focus:ring-2 focus:ring-blue-500 transition-colors`}
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5 text-gray-500" />
+                  ) : (
+                    <Eye className="w-5 h-5 text-gray-500" />
+                  )}
+                </button>
+              </div>
+              <div className="flex justify-end mt-2">
+                <a
+                  href="#"
+                  className={`text-sm ${
+                    isDarkMode 
+                      ? 'text-blue-400 hover:text-blue-300' 
+                      : 'text-blue-600 hover:text-blue-700'
+                  }`}
+                >
+                  Forgot password?
+                </a>
+              </div>
             </div>
-          </div>
 
-          <div className="text-right">
-            <Link to="/forgot-password" className="text-purple-500 hover:text-purple-400">
-              Forgot password ?
-            </Link>
-          </div>
+            <button
+              type="submit"
+              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+                isDarkMode 
+                  ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            >
+              Sign In
+            </button>
 
-          <button
-            type="submit"
-            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-          >
-            Sign In
-          </button>
-
-          <div className="text-center text-white">
-            Doesn't have an account yet?{' '}
-            <Link to="/signup" className="text-purple-500 hover:text-purple-400">
-              Sign Up
-            </Link>
-          </div>
-        </form>
+            <p className="text-center text-sm">
+              <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
+                Don't have an account yet?{' '}
+              </span>
+              <a
+                href="#"
+                className={`font-medium ${
+                  isDarkMode 
+                    ? 'text-blue-400 hover:text-blue-300' 
+                    : 'text-blue-600 hover:text-blue-700'
+                }`}
+              >
+                Sign Up
+              </a>
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   );
