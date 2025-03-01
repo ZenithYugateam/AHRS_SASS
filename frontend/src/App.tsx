@@ -20,18 +20,13 @@ function App() {
       <Routes>
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="post-job" element={<PostJob />} />
-          <Route path="candidate" element={<CandidateHome />} />
-          <Route path="interview" element={<InterviewScreen />} />
-          <Route path="candidate-dashboard" element={<CandidateDashboard />} />
-          <Route path="upload-resume" element={<ResumeUpload />} /> 
-        {/*Admin dashboard routes*/}
+          <Route index element={<Landingpage />} />
+          <Route path="/post-job" element={<PostJob />} />
+          <Route path="/candidate-dashboard" element={<CandidateHome />} />
+          <Route path="/interview" element={<InterviewScreen />} />
+          <Route path="/upload-resume" element={<ResumeUpload />} /> 
           <Route path="/Admindashboard" element={<Admindashboard />} />
-          {/*landing page route*/}
-          <Route path="/landingpage" element={<Landingpage />} />
-        </Route>
+          <Route path="/Companydashboard" element={<Dashboard />} ></Route>
       </Routes>
     </Router>
   );
