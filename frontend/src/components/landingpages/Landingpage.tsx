@@ -128,24 +128,24 @@ function Landingpage() {
             </Button>
             <div className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-800 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
               <div className="py-1">
-                <button 
+                <a 
+                  href="https://us-east-1dnp36kj4m.auth.us-east-1.amazoncognito.com/login?client_id=4d6s0nfgnlt2gb4vk3pc5b38pr&response_type=code&scope=email+openid+phone&redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fadmindashboard"
                   className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-purple-600 hover:text-white"
-                  onClick={() => handleLoginClick('admin')}
                 >
                   Admin Login
-                </button>
-                <button 
+                </a>
+                <a 
+                  href="https://us-east-1jbh0sfnyn.auth.us-east-1.amazoncognito.com/login?client_id=7235jqfsrq6us6vj9gutgb8c1o&response_type=code&scope=email+openid+phone&redirect_uri=https%3A%2F%2Flocalhost%3A5173%2FCompanydashboard"
                   className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-purple-600 hover:text-white"
-                  onClick={() => handleLoginClick('candidate')}
-                >
-                  Candidate Login
-                </button>
-                <button 
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-purple-600 hover:text-white"
-                  onClick={() => handleLoginClick('company')}
                 >
                   Company Login
-                </button>
+                </a>
+                <a 
+                  href="https://us-east-1ahnhr07jk.auth.us-east-1.amazoncognito.com/login?client_id=gqiphkof1gpahub6b0h600549&response_type=code&scope=email+openid+phone&redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fcandidate-dashboard"
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-purple-600 hover:text-white"
+                >
+                  Candidate Login
+                </a>
               </div>
             </div>
           </div>
