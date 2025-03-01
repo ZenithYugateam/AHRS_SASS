@@ -101,7 +101,7 @@ function ResumeUpload() {
       setMatchPercentage(percentage);
       setTimeout(() => {
         if (percentage < 30) {
-          navigate('/candidate');
+          navigate('/candidate-dashboard');
         }
       }, 3000);
     } catch (error) {
