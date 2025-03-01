@@ -39,6 +39,7 @@ function InterviewScreen() {
   const [isPaused, setIsPaused] = useState(false);
   const [pauseMessage, setPauseMessage] = useState("");
   const [submissionLoading, setSubmissionLoading] = useState(false);
+  const [dynamicCount, setDynamicCount] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -55,15 +56,15 @@ function InterviewScreen() {
   const STORE_INTERVIEW_ENDPOINT =
     "https://vbajfgmatb.execute-api.us-east-1.amazonaws.com/prod/storeInterview";
 
-  // Updated pre-signed URL endpoint (note the path "singedurl")
+  // Pre-signed URL endpoint – note the path is "singedurl" as per your setup.
   const PRESIGNED_URL_ENDPOINT =
     "https://071h9ufh65.execute-api.us-east-1.amazonaws.com/singedurl";
 
-  // Limit dynamic question generation
-  const MAX_DYNAMIC_COUNT = 1;
-  const [dynamicCount, setDynamicCount] = useState(0);
 
+
+  // --- Effects ---
   useEffect(() => {
+    // Initialize speech synthesis; you can adjust voice parameters here if desired.
     speechSynthesisRef.current = window.speechSynthesis;
     return () => {
       speechSynthesisRef.current?.cancel();
@@ -121,12 +122,15 @@ function InterviewScreen() {
     }
   }, [timeLeft, isInterviewStarted, isPaused]);
 
-  // Update answer from transcript
+  // Update answer from transcript (voice mode)
   useEffect(() => {
-    if (isVoiceMode) setAnswer(transcript);
+    if (isVoiceMode) {
+      // Optional: You could send transcript to an auto-correction API here.
+      setAnswer(transcript);
+    }
   }, [transcript, isVoiceMode]);
 
-  // Read new question when it changes
+  // When current question changes, read it aloud and reset timer.
   useEffect(() => {
     if (isInterviewStarted && questions[currentQuestion]) {
       readQuestion();
@@ -137,6 +141,9 @@ function InterviewScreen() {
   const readQuestion = () => {
     if (speechSynthesisRef.current && questions[currentQuestion]) {
       const utterance = new SpeechSynthesisUtterance(questions[currentQuestion].text);
+      // Optional: Adjust voice rate and pitch for a calm, friendly tone
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
       speechSynthesisRef.current.speak(utterance);
     }
   };
@@ -180,12 +187,15 @@ function InterviewScreen() {
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
       };
       mediaRecorder.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: "video/webm" });
         try {
           const videoUrl = await uploadVideoToS3(blob);
+          // Update the current response with the videoUrl
           setResponses((prev) => {
             const currentResponse = prev[prev.length - 1] || {};
             return [...prev.slice(0, -1), { ...currentResponse, videoUrl }];
@@ -227,7 +237,7 @@ function InterviewScreen() {
   const generateDynamicQuestion = async (candidateAnswer: string, staticQuestion: Question) => {
     try {
       if (dynamicCount >= MAX_DYNAMIC_COUNT)
-        return { dynamicQuestion: "", dynamicEvaluation: "", dynamicAccuracy: 0 };
+        return { dynamicQuestion: " ", dynamicEvaluation: "", dynamicAccuracy: 0 };
       const prompt = `
 You are a friendly and insightful interviewer. Based on the candidate's response: "${candidateAnswer}",
 ask one natural follow-up question that delves deeper into their project experience without repeating the original question.
@@ -277,7 +287,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
       alert("Questions are still loading. Please wait.");
       return;
     }
-    // Generate and set candidateId before uploading any videos.
+    // Generate and set candidateId before any uploads occur.
     const generatedCandidateId = "cand_" + Math.random().toString(36).substr(2, 9);
     setCandidateId(generatedCandidateId);
     setIsInterviewStarted(true);
@@ -311,8 +321,9 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     setResponses((prev) => [...prev, currentResponse]);
     stopVideoRecording();
 
+    // Provide a tip to the candidate to create a comfortable transition.
     setIsPaused(true);
-    setPauseMessage("Please wait, next question will start shortly...");
+    setPauseMessage("Great response! Now, please wait while we move to the next question. Remember, take a deep breath and relax.");
     setAnswer("");
     setSelectedOption(null);
     resetTranscript();
