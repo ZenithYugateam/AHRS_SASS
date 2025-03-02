@@ -559,7 +559,7 @@
                     </div>
                     <div className="flex justify-between items-center">
                       <p className="text-sm">Enterprise</p>
-                      <p className="text-sm font-bold">$199/mo</p>
+                      <p className="text-sm font-bold">$299/mo</p>
                     </div>
                   </div>
                 </div>
