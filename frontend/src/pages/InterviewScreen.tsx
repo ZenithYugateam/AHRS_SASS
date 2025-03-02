@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Mic, Type, Timer, Play } from "lucide-react";
 import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
 
@@ -16,12 +17,37 @@ interface ResponseData {
   questionId: number;
   answer: string;
   correctAnswer?: string;
-  videoUrl?: string;  // S3 URL after video upload via pre-signed URL
+  videoUrl?: string; // S3 URL after video upload via pre-signed URL
   dynamicEvaluation?: string;
   dynamicAccuracy?: number;
 }
 
 function InterviewScreen() {
+  const { state } = useLocation();
+  const navigate = useNavigate();
+
+  // Retrieve job data from navigation state or localStorage
+  const [job, setJob] = useState(() => {
+    if (state && state.job) {
+      localStorage.setItem("selectedJob", JSON.stringify(state.job));
+      return state.job;
+    }
+    const stored = localStorage.getItem("selectedJob");
+    return stored ? JSON.parse(stored) : null;
+  });
+
+  // If job is missing, redirect back to CandidateHome
+  useEffect(() => {
+    if (!job) {
+      console.error("Job data not provided. Redirecting back to CandidateHome.");
+      navigate("/candidate");
+    }
+  }, [job, navigate]);
+
+  // Prevent rendering until job data is available
+  if (!job) return null;
+
+  // State variables
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [totalTime, setTotalTime] = useState(60);
@@ -56,26 +82,27 @@ function InterviewScreen() {
   const STORE_INTERVIEW_ENDPOINT =
     "https://vbajfgmatb.execute-api.us-east-1.amazonaws.com/prod/storeInterview";
 
-  // Pre-signed URL endpoint – note the path is "singedurl" as per your setup.
+  // Pre-signed URL endpoint (ensure the path is correct per your setup)
   const PRESIGNED_URL_ENDPOINT =
     "https://071h9ufh65.execute-api.us-east-1.amazonaws.com/singedurl";
 
-
-
   // --- Effects ---
   useEffect(() => {
-    // Initialize speech synthesis; you can adjust voice parameters here if desired.
+    // Initialize speech synthesis
     speechSynthesisRef.current = window.speechSynthesis;
     return () => {
       speechSynthesisRef.current?.cancel();
     };
   }, []);
 
-  // --- Fetch Questions ---
+  // --- Fetch Questions using dynamic job parameters ---
   useEffect(() => {
     axios
       .get("https://q06ec9jvd4.execute-api.us-east-1.amazonaws.com/qa/get_questions", {
-        params: { company_id: "98765", job_id: "101" },
+        params: { 
+          company_id: job.company_id, 
+          job_id: job.job_id || job.id,
+        },
       })
       .then((response) => {
         let apiQuestions: Question[] = [];
@@ -110,9 +137,9 @@ function InterviewScreen() {
           },
         ]);
       });
-  }, []);
+  }, [job]);
 
-  // --- Timer ---
+  // --- Timer Effect ---
   useEffect(() => {
     if (isInterviewStarted && !isPaused && timeLeft > 0) {
       const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
@@ -122,10 +149,9 @@ function InterviewScreen() {
     }
   }, [timeLeft, isInterviewStarted, isPaused]);
 
-  // Update answer from transcript (voice mode)
+  // Update answer from transcript when in voice mode
   useEffect(() => {
     if (isVoiceMode) {
-      // Optional: You could send transcript to an auto-correction API here.
       setAnswer(transcript);
     }
   }, [transcript, isVoiceMode]);
@@ -141,7 +167,6 @@ function InterviewScreen() {
   const readQuestion = () => {
     if (speechSynthesisRef.current && questions[currentQuestion]) {
       const utterance = new SpeechSynthesisUtterance(questions[currentQuestion].text);
-      // Optional: Adjust voice rate and pitch for a calm, friendly tone
       utterance.rate = 0.9;
       utterance.pitch = 1;
       speechSynthesisRef.current.speak(utterance);
@@ -195,7 +220,6 @@ function InterviewScreen() {
         const blob = new Blob(chunksRef.current, { type: "video/webm" });
         try {
           const videoUrl = await uploadVideoToS3(blob);
-          // Update the current response with the videoUrl
           setResponses((prev) => {
             const currentResponse = prev[prev.length - 1] || {};
             return [...prev.slice(0, -1), { ...currentResponse, videoUrl }];
@@ -236,7 +260,7 @@ function InterviewScreen() {
   // --- Dynamic Follow-up Generation ---
   const generateDynamicQuestion = async (candidateAnswer: string, staticQuestion: Question) => {
     try {
-      if (dynamicCount >= MAX_DYNAMIC_COUNT)
+      if (dynamicCount >= 3)
         return { dynamicQuestion: " ", dynamicEvaluation: "", dynamicAccuracy: 0 };
       const prompt = `
 You are a friendly and insightful interviewer. Based on the candidate's response: "${candidateAnswer}",
@@ -287,7 +311,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
       alert("Questions are still loading. Please wait.");
       return;
     }
-    // Generate and set candidateId before any uploads occur.
+    // Generate candidate ID before starting the interview
     const generatedCandidateId = "cand_" + Math.random().toString(36).substr(2, 9);
     setCandidateId(generatedCandidateId);
     setIsInterviewStarted(true);
@@ -321,7 +345,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     setResponses((prev) => [...prev, currentResponse]);
     stopVideoRecording();
 
-    // Provide a tip to the candidate to create a comfortable transition.
+    // Transition pause between questions
     setIsPaused(true);
     setPauseMessage("Great response! Now, please wait while we move to the next question. Remember, take a deep breath and relax.");
     setAnswer("");
@@ -340,7 +364,6 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     }, 5000);
   };
 
-  // --- Submission ---
   const submitInterview = async () => {
     if (!candidateId || responses.length === 0) {
       console.error("Candidate ID or responses are missing:", candidateId, responses);
@@ -349,7 +372,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     }
     setSubmissionLoading(true);
     try {
-      const payload = { candidateId, jobId: "101", responses };
+      const payload = { candidateId, jobId: job.job_id || job.id, responses };
       console.log("Submitting payload:", payload);
       const lambdaResponse = await axios.post(
         STORE_INTERVIEW_ENDPOINT,
@@ -531,7 +554,3 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
 }
 
 export default InterviewScreen;
-
-function uploadVideoToS3(blob: Blob) {
-  throw new Error("Function not implemented.");
-}
