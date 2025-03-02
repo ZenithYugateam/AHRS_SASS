@@ -1,13 +1,28 @@
-import React, { useEffect, useRef, useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 function CandidateHome() {
   const [jobData, setJobData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [username, setUsername] = useState("User"); // Default value
   const scrollRef = useRef(null);
   const navigate = useNavigate();
+
+  // Retrieve username from session storage
+  useEffect(() => {
+    const storedUserData = sessionStorage.getItem("user");
+
+    if (storedUserData) {
+      try {
+        const userData = JSON.parse(storedUserData);
+        setUsername(userData?.username);
+      } catch (error) {
+        console.error("Error parsing session storage data:", error);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -16,23 +31,19 @@ function CandidateHome() {
           "https://y9mnrdc2qd.execute-api.us-east-1.amazonaws.com/default/get_all_company_details",
           {
             timeout: 5000,
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
           }
         );
 
-        if (response.data && response.data.data) {
+        if (response.data?.data) {
           setJobData(response.data.data);
         } else {
           setError("No job data found");
         }
       } catch (err) {
-        if (err.code === "ECONNABORTED") {
-          setError("Request timed out. Please try again later.");
-        } else {
-          setError("Failed to fetch job data. Check API Gateway configuration.");
-        }
+        setError(err.code === "ECONNABORTED" 
+          ? "Request timed out. Please try again later."
+          : "Failed to fetch job data. Check API Gateway configuration.");
       } finally {
         setLoading(false);
       }
@@ -41,16 +52,18 @@ function CandidateHome() {
     fetchData();
   }, []);
 
-  const scrollLeft = () => {
-    scrollRef.current.scrollBy({ left: -450, behavior: "smooth" });
-  };
-
-  const scrollRight = () => {
-    scrollRef.current.scrollBy({ left: 450, behavior: "smooth" });
-  };
+  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -450, behavior: "smooth" });
+  const scrollRight = () => scrollRef.current?.scrollBy({ left: 450, behavior: "smooth" });
 
   const handleJobClick = (job) => {
-    navigate('/upload-resume', { state: { job } });
+    navigate("/upload-resume", { state: { job } });
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    sessionStorage.removeItem("userData");
+    localStorage.removeItem("userData");
+    navigate("/"); // Redirect to login page
   };
 
   return (
@@ -58,20 +71,31 @@ function CandidateHome() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-3xl font-bold text-white">Welcome User,</h2>
+            <h2 className="text-3xl font-bold text-white">
+              Welcome, {username}
+            </h2>
             <p className="text-gray-400 mt-1">
-              We are delighted to have you here. This platform is designed to streamline your job posting process and help you find the best talent for your organization.
+              We are delighted to have you here. This platform is designed to streamline your job search and help you find the best opportunities.
             </p>
           </div>
+
+          {/* Logout Button */}
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition duration-300"
+          >
+            Logout
+          </button>
         </div>
 
+        {/* Jobs Section */}
         <div className="relative overflow-hidden">
-          <div className="relative overflow-hidden pr-5">
-            {loading ? (
-              <p className="text-white">Loading jobs...</p>
-            ) : error ? (
-              <p className="text-red-500">{error}</p>
-            ) : (
+          {loading ? (
+            <p className="text-white">Loading jobs...</p>
+          ) : error ? (
+            <p className="text-red-500">{error}</p>
+          ) : (
+            <div className="relative overflow-hidden pr-5">
               <div
                 className="flex overflow-x-scroll scrollbar-hide gap-5 w-full h-fit"
                 ref={scrollRef}
@@ -119,10 +143,11 @@ function CandidateHome() {
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
+        {/* Scroll Buttons */}
         <div className="flex w-full justify-between my-5">
           <button
             onClick={scrollLeft}
@@ -167,4 +192,3 @@ function CandidateHome() {
 }
 
 export default CandidateHome;
-  

@@ -25,8 +25,8 @@ function App() {
           <Route path="/candidate-dashboard" element={<CandidateHome />} />
           <Route path="/interview" element={<InterviewScreen />} />
           <Route path="/upload-resume" element={<ResumeUpload />} /> 
-          <Route path="/Admindashboard" element={<Admindashboard />} />
-          <Route path="/Companydashboard" element={<Dashboard />} ></Route>
+          <Route path="/Admin-dashboard" element={<Admindashboard />} />
+          <Route path="/Company-dashboard" element={<Dashboard />} ></Route>
       </Routes>
     </Router>
   );

@@ -10,12 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.758.0",
     "@radix-ui/react-icons": "^1.3.2",
     "axios": "^1.8.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
     "embla-carousel-react": "^8.5.2",
+    "firebase": "^11.4.0",
     "framer-motion": "^12.4.7",
     "lucide-react": "^0.344.0",
     "mammoth": "^1.9.0",
