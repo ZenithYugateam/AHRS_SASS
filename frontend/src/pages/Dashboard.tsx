@@ -225,7 +225,7 @@
 
           {currentPage === 'packages' && (
             <>
-              {/* Packages Page */}
+              {/* Packages Page s*/}
               <div className="mb-8">
                 <h2 className="text-3xl font-bold mb-6">Subscription & Packages</h2>
                 {/* Current Plan Overview */}
