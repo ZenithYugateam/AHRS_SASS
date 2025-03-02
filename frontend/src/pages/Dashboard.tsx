@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Package, 
-  User, 
-  ChevronRight, 
-  ChevronLeft, 
+  User,  
   BarChart3, 
   Users, 
   Target, 
@@ -18,6 +16,9 @@ import {
   Mic,
   Home
 } from 'lucide-react';
+import { Card, CardContent, CardActions, Typography, Button, Chip } from "@mui/material";
+import { Work, LocationOn, AttachMoney } from "@mui/icons-material";
+import axios from 'axios';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -28,18 +29,40 @@ function Dashboard() {
     setIsSubscriptionExpanded(!isSubscriptionExpanded);
   };
 
-  const navigateTo = (page) => {
-    setCurrentPage(page);
-    // Reset subscription panel state when navigating
-    if (page !== 'home') {
-      setIsSubscriptionExpanded(false);
-    }
+  const [jobs, setJobs] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
+
+  const handleApply = (job: never) => {
+    setSelectedJob({ job_id: job.job_id, company_id: job.company_id });
+    console.log("Applied for job:", selectedJob);
   };
+
 
   
 
   const openInterviewMaker = () => {
     navigateTo('interview-maker');
+  };
+
+  useEffect(() => {
+    fetchCompanyJobs();
+  }, []);
+
+  const navigateTo = (page: React.SetStateAction<string>) => {
+    console.log("***** page : ", page)
+    setCurrentPage(page);
+  };
+
+  const fetchCompanyJobs = async () => {
+    try {
+      const response = await axios.post(
+        'https://ujohw8hshk.execute-api.us-east-1.amazonaws.com/default/get_company_posted_jobs',
+        { company_id: '12345' } // Replace with dynamic company ID
+      );
+      setJobs(response.data.jobs);
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+    }
   };
 
   return (
@@ -467,6 +490,41 @@ function Dashboard() {
                 </div>
               </div>
             </div>
+             
+             <div style={{ padding: "2rem" }}>
+      <Typography variant="h4" gutterBottom style={{ color: "#fff" }}>
+        Company Posted Jobs
+      </Typography>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem" }}>
+        {jobs.length > 0 ? (
+          jobs.map((job) => (
+            <Card key={job.job_id} style={{ background: "#1e1e1e", color: "#fff", borderRadius: "12px", padding: "1.5rem" }}>
+              <CardContent>
+                <Typography variant="h5" component="div" gutterBottom>
+                  <Work style={{ verticalAlign: "middle", marginRight: "8px" }} />
+                  {job.job_title}
+                </Typography>
+                <Typography variant="body2" color="gray" paragraph>
+                  {job.job_description || "No description available."}
+                </Typography>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" }}>
+                  <Chip label={job.experience || "Experience not specified"} style={{ background: "#2e2e2e", color: "#fff" }} />
+                  <Chip icon={<LocationOn />} label={job.location} style={{ background: "#2e2e2e", color: "#fff" }} />
+                  <Chip icon={<AttachMoney />} label={job.salary || "Not specified"} style={{ background: "#2e2e2e", color: "#fff" }} />
+                </div>
+              </CardContent>
+              <CardActions>
+                <Button variant="contained" color="primary" fullWidth onClick={() => handleApply(job)}>
+                  Apply Now
+                </Button>
+              </CardActions>
+            </Card>
+          ))
+        ) : (
+          <Typography>No jobs found.</Typography>
+        )}
+      </div>
+    </div>
           </>
         ) : null}
       </main>
