@@ -27,6 +27,7 @@ function CandidateHome() {
   }, []);
 
   useEffect(() => {
+    console.log("Fetching job data...");
     const fetchData = async () => {
       try {
         const response = await axios.get(
@@ -36,37 +37,43 @@ function CandidateHome() {
             headers: { "Content-Type": "application/json" },
           }
         );
-
-        if (response.data?.data) {
+        console.log("API response:", response.data);
+        if (response.data && response.data.data) {
           setJobData(response.data.data);
         } else {
           setError("No job data found");
         }
       } catch (err) {
-        setError(err.code === "ECONNABORTED" 
-          ? "Request timed out. Please try again later."
-          : "Failed to fetch job data. Check API Gateway configuration.");
+        console.error("Fetch error:", err);
+        if (err.code === "ECONNABORTED") {
+          setError("Request timed out. Please try again later.");
+        } else {
+          setError("Failed to fetch job data. Check API Gateway configuration.");
+        }
       } finally {
         setLoading(false);
       }
     };
-
+  
     fetchData();
   }, []);
+  
 
-  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -450, behavior: "smooth" });
-  const scrollRight = () => scrollRef.current?.scrollBy({ left: 450, behavior: "smooth" });
+  const scrollLeft = () => {
+    scrollRef.current.scrollBy({ left: -450, behavior: "smooth" });
+  };
+
+  const scrollRight = () => {
+    scrollRef.current.scrollBy({ left: 450, behavior: "smooth" });
+  };
 
   const handleJobClick = (job) => {
-    navigate("/upload-resume", { state: { job } });
+    console.log("Selected job:", job);
+    localStorage.setItem("selectedJob", JSON.stringify(job));
+    navigate('/upload-resume', { state: { job } });
   };
-
-  // Logout function
-  const handleLogout = () => {
-    sessionStorage.removeItem("userData");
-    localStorage.removeItem("userData");
-    navigate("/"); // Redirect to login page
-  };
+  
+  
 
   return (
     <div className="min-h-screen bg-[#0F0B1E] relative">

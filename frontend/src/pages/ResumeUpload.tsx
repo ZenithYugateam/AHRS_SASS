@@ -13,6 +13,13 @@ function ResumeUpload() {
   const location = useLocation();
   const navigate = useNavigate();
   const { job } = location.state || {};
+  
+  // Optionally check for job data here
+  if (!job) {
+    console.error("Job data not provided");
+    // You might want to redirect or show an error message.
+  }
+
   const [resume, setResume] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [matchPercentage, setMatchPercentage] = useState<number | null>(null);
@@ -39,7 +46,6 @@ function ResumeUpload() {
             const pageText = content.items.map((item: any) => item.str).join(' ');
             text += pageText + '\n';
           }
-
           resolve(text);
         } catch (err) {
           reject(err);
@@ -65,7 +71,7 @@ function ResumeUpload() {
             },
             {
               role: 'user',
-              content: `Job Description:\n${jobDescription}\n\nResume:\n${resumeText}\n\nProvide a match percentage from 0 to 100, indicating how well the resume matches the job description.`,
+              content: `Job Description:\n${job.job_description || ''}\n\nResume:\n${resumeText}\n\nProvide a match percentage from 0 to 100, indicating how well the resume matches the job description.`,
             },
           ],
         },
@@ -78,7 +84,7 @@ function ResumeUpload() {
       );
 
       const aiMessage = response.data.choices[0].message.content;
-      console.log("***** ai mesage ", aiMessage);
+      console.log("***** ai message ", aiMessage);
       const percentageMatch = parseFloat(
         (aiMessage.match(/(\d+)%/g) || []).pop()?.replace('%', '') || '0'
       );
@@ -113,12 +119,13 @@ function ResumeUpload() {
 
   const handleLater = async () => {
     try {
-      await axios.post('https://example.com/api/notify-later', { jobId: job.id });
+      // Use job.job_id (or another field if applicable)
+      await axios.post('https://example.com/api/notify-later', { jobId: job.job_id });
       alert('You will be notified later.');
     } catch (error) {
       console.error('API call failed:', error);
     } finally {
-      navigate('/candidate')
+      navigate('/candidate');
     }
   };
 
@@ -162,14 +169,14 @@ function ResumeUpload() {
             />
           </div>
 
-          {matchPercentage >= 30 ? (
+          {matchPercentage >= 0 ? (
             <div className="text-center">
               <p className="text-lg font-semibold">Would you like to proceed now or later?</p>
               <div className="flex gap-4 mt-4">
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => navigate('/interview')}
+                  onClick={() => navigate('/interview', { state: { job } })}
                   className="px-6 py-3 bg-green-500 rounded-lg shadow-lg text-white hover:bg-green-600"
                 >
                   Proceed Now
