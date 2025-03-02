@@ -67,7 +67,7 @@ function Landingpage() {
             <BrainCircuit className="h-6 w-6 text-purple-500" />
             <span className="font-bold text-xl">AHRS</span>
           </div>
-          
+
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
             <a 
@@ -106,7 +106,7 @@ function Landingpage() {
               Contact
             </a>
           </nav>
-          
+
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center">
             <Button 
@@ -118,7 +118,13 @@ function Landingpage() {
               {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </Button>
           </div>
-          
+
+          <Button 
+            className="bg-purple-600 hover:bg-purple-700 hidden md:flex"
+            onClick={() => window.open('#', '_blank')}
+          >
+            Get Started
+          </Button>
           {/* Login Dropdown */}
           <div className="relative group hidden md:block">
             <Button 
@@ -128,29 +134,29 @@ function Landingpage() {
             </Button>
             <div className="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-800 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
               <div className="py-1">
-                <a 
-                  href="https://us-east-1dnp36kj4m.auth.us-east-1.amazoncognito.com/login?client_id=4d6s0nfgnlt2gb4vk3pc5b38pr&response_type=code&scope=email+openid+phone&redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fadmindashboard"
+                <button 
                   className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-purple-600 hover:text-white"
+                  onClick={() => handleLoginClick('admin')}
                 >
                   Admin Login
-                </a>
-                <a 
-                  href="https://us-east-1jbh0sfnyn.auth.us-east-1.amazoncognito.com/login?client_id=7235jqfsrq6us6vj9gutgb8c1o&response_type=code&scope=email+openid+phone&redirect_uri=https%3A%2F%2Flocalhost%3A5173%2FCompanydashboard"
+                </button>
+                <button 
                   className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-purple-600 hover:text-white"
-                >
-                  Company Login
-                </a>
-                <a 
-                  href="https://us-east-1ahnhr07jk.auth.us-east-1.amazoncognito.com/login?client_id=gqiphkof1gpahub6b0h600549&response_type=code&scope=email+openid+phone&redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fcandidate-dashboard"
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-purple-600 hover:text-white"
+                  onClick={() => handleLoginClick('candidate')}
                 >
                   Candidate Login
-                </a>
+                </button>
+                <button 
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-purple-600 hover:text-white"
+                  onClick={() => handleLoginClick('company')}
+                >
+                  Company Login
+                </button>
               </div>
             </div>
           </div>
         </div>
-        
+
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <div className="md:hidden absolute top-full left-0 right-0 bg-gray-900 border-b border-gray-800 py-4 px-6 flex flex-col space-y-4">
@@ -209,6 +215,12 @@ function Landingpage() {
             >
               Contact
             </a>
+            <Button 
+              className="bg-purple-600 hover:bg-purple-700 w-full"
+              onClick={() => window.open('#', '_blank')}
+            >
+              Get Started
+            </Button>
             <div className="pt-2 border-t border-gray-800">
               <p className="text-sm text-gray-400 mb-2">Login as:</p>
               <div className="flex flex-col space-y-2">
@@ -283,7 +295,7 @@ function Landingpage() {
                 </a>
               </div>
             </div>
-            
+
             <div>
               <h3 className="font-semibold mb-4">Support</h3>
               <ul className="space-y-2 text-sm text-gray-400">
@@ -294,7 +306,7 @@ function Landingpage() {
                 <li><a href="#" className="hover:text-purple-400">Accessibility</a></li>
               </ul>
             </div>
-            
+
             <div>
               <h3 className="font-semibold mb-4">Company</h3>
               <ul className="space-y-2 text-sm text-gray-400">
@@ -321,7 +333,7 @@ function Landingpage() {
                 <li><a href="#" className="hover:text-purple-400">FAQs</a></li>
               </ul>
             </div>
-            
+
             <div>
               <h3 className="font-semibold mb-4">Contact Info</h3>
               <ul className="space-y-3 text-sm text-gray-400">
@@ -340,9 +352,9 @@ function Landingpage() {
               </ul>
             </div>
           </div>
-          
+
           <Separator className="my-8 bg-gray-800" />
-          
+
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-sm text-gray-500">
               © 2025 AHRS. All rights reserved.
