@@ -1,29 +1,41 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { auth } from '../../../Firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { Button } from '../components/ui/button';
-import { Card } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Checkbox } from '../components/ui/checkbox';
-import { BrainCircuit, Lock, Mail, Eye, EyeOff, ArrowRight, Phone, User } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { auth } from "../../../Firebase";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Checkbox } from "../components/ui/checkbox";
+import {
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Phone,
+  User,
+} from "lucide-react";
 
 function Login() {
   const navigate = useNavigate();
-  const { type = 'candidate' } = useParams<{ type: string }>();
-  const validTypes = ['admin', 'candidate', 'company'];
-  const validType = validTypes.includes(type as string) ? type : 'candidate';
-  
+  const { type = "candidate" } = useParams<{ type: string }>();
+  const validTypes = ["admin", "candidate", "company"];
+  const validType = validTypes.includes(type as string) ? type : "candidate";
+
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(validType as string);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     setActiveTab(validType as string);
@@ -31,42 +43,42 @@ function Login() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     try {
       let userCredential;
       if (isSignUp) {
         userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCredential.user, { displayName: username });
-        alert('Account created successfully!');
+        alert("Account created successfully!");
       } else {
         userCredential = await signInWithEmailAndPassword(auth, email, password);
-        alert('Logged in successfully!');
+        alert("Logged in successfully!");
       }
-      
+
       const user = userCredential.user;
       const userData = {
         email: user.email,
-        username: user.displayName || email.split('@')[0],
+        username: user.displayName || email.split("@")[0],
         phoneNumber: phoneNumber,
-        role: activeTab
+        role: activeTab,
       };
 
-      sessionStorage.setItem('user', JSON.stringify(userData));
-      console.log('User Data:', userData);
+      sessionStorage.setItem("user", JSON.stringify(userData));
+      console.log("User Data:", userData);
 
       switch (activeTab) {
-        case 'candidate':
-          navigate('/candidate-dashboard');
+        case "candidate":
+          navigate("/candidate-dashboard");
           break;
-        case 'admin':
-          navigate('/admin-dashboard');
+        case "admin":
+          navigate("/admin-dashboard");
           break;
-        case 'company':
-          navigate('/company-dashboard');
+        case "company":
+          navigate("/company-dashboard");
           break;
         default:
-          navigate('/');
+          navigate("/");
       }
     } catch (err: any) {
       setError(err.message);
@@ -74,34 +86,47 @@ function Login() {
   };
 
   const getTitle = () => {
-    if (isSignUp) return 'Sign Up';
-    switch (activeTab) {
-      case 'admin': return 'Admin Login';
-      case 'candidate': return 'Candidate Login';
-      case 'company': return 'Company Login';
-      default: return 'Login';
-    }
+    if (isSignUp) return "Sign Up";
+    if (activeTab === "") return "Login"; // Default state when no tab is selected
+    return `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Login`;
   };
 
   return (
     <div className="min-h-[calc(100vh-64px)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <BrainCircuit className="h-8 w-8 text-purple-500" />
-            <span className="font-bold text-2xl">AHRS</span>
-          </div>
           <h2 className="text-3xl font-bold">{getTitle()}</h2>
           <p className="text-gray-400 mt-2">
-            {isSignUp ? 'Create an account to get started' : 'Sign in to access your account'}
+            {isSignUp ? "Create an account to get started" : "Sign in to access your account"}
           </p>
         </div>
 
         <Tabs defaultValue={validType} value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 mb-8">
-            <TabsTrigger value="admin">Admin</TabsTrigger>
-            <TabsTrigger value="candidate">Candidate</TabsTrigger>
-            <TabsTrigger value="company">Company</TabsTrigger>
+            <TabsTrigger
+              value="admin"
+              className={`${
+                activeTab === "admin" ? "bg-purple-600 text-white" : ""
+              }`}
+            >
+              Admin
+            </TabsTrigger>
+            <TabsTrigger
+              value="candidate"
+              className={`${
+                activeTab === "candidate" ? "bg-purple-600 text-white" : ""
+              }`}
+            >
+              Candidate
+            </TabsTrigger>
+            <TabsTrigger
+              value="company"
+              className={`${
+                activeTab === "company" ? "bg-purple-600 text-white" : ""
+              }`}
+            >
+              Company
+            </TabsTrigger>
           </TabsList>
 
           <Card className="bg-gray-900 border-gray-800 p-6">
@@ -184,36 +209,10 @@ function Login() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Checkbox 
-                        id="remember-me" 
-                        checked={rememberMe}
-                        onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                      />
-                      <label htmlFor="remember-me" className="text-sm">Remember me</label>
-                    </div>
-                    {!isSignUp && (
-                      <a href="#" className="text-sm text-purple-400 hover:text-purple-300">
-                        Forgot password?
-                      </a>
-                    )}
-                  </div>
-
                   <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">
-                    {isSignUp ? 'Sign Up' : 'Sign In'}
+                    {isSignUp ? "Sign Up" : "Sign In"}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
-
-                  <div className="text-center mt-4">
-                    <button
-                      type="button"
-                      className="text-sm text-purple-400 hover:text-purple-300"
-                      onClick={() => setIsSignUp(!isSignUp)}
-                    >
-                      {isSignUp ? 'Already have an account? Sign In' : 'Don\'t have an account? Sign Up'}
-                    </button>
-                  </div>
                 </div>
               </form>
             </TabsContent>
