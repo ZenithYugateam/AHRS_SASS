@@ -13,7 +13,7 @@ interface PricingPlan {
 }
 
 interface PricingFormProps {
-  onAddPlan: (plan: Omit<PricingPlan, 'id' | 'subscribers' | 'revenue'>) => void;
+  onAddPlan: (plan: PricingPlan) => void;
   onCancel: () => void;
 }
 
@@ -25,11 +25,37 @@ const PricingForm: React.FC<PricingFormProps> = ({ onAddPlan, onCancel }) => {
     tokens: 0,
     price: 0
   });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (newPlan.name && newPlan.duration > 0 && newPlan.tokensPerMinute > 0 && newPlan.tokens > 0 && newPlan.price > 0) {
-      onAddPlan(newPlan);
-      setNewPlan({ name: '', duration: 0, tokensPerMinute: 0, tokens: 0, price: 0 });
+      setLoading(true);
+      setMessage('');
+
+      try {
+        const response = await fetch('https://1fyvrmedp8.execute-api.us-east-1.amazonaws.com/default/post_pricing', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newPlan),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setMessage('Plan created successfully!');
+          onAddPlan({ ...newPlan, id: data.id, subscribers: 0, revenue: 0 });
+          setNewPlan({ name: '', duration: 0, tokensPerMinute: 0, tokens: 0, price: 0 });
+        } else {
+          setMessage(`Error: ${data.error || 'Something went wrong'}`);
+        }
+      } catch (error) {
+        setMessage('Error: Unable to connect to the server');
+      }
+
+      setLoading(false);
     }
   };
 
@@ -106,18 +132,24 @@ const PricingForm: React.FC<PricingFormProps> = ({ onAddPlan, onCancel }) => {
         </div>
       </div>
       
+      {message && (
+        <p className={`mt-4 ${message.includes('Error') ? 'text-red-400' : 'text-green-400'}`}>{message}</p>
+      )}
+
       <div className="flex justify-end mt-6 space-x-3">
         <button 
           className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
           onClick={onCancel}
+          disabled={loading}
         >
           Cancel
         </button>
         <button 
           className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-md"
           onClick={handleSubmit}
+          disabled={loading}
         >
-          Create Plan
+          {loading ? 'Submitting...' : 'Create Plan'}
         </button>
       </div>
     </div>
