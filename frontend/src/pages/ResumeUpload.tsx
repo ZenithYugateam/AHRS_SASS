@@ -125,7 +125,7 @@ function ResumeUpload() {
     } catch (error) {
       console.error('API call failed:', error);
     } finally {
-      navigate('/candidate');
+      navigate('/applied-jobs');
     }
   };
 
