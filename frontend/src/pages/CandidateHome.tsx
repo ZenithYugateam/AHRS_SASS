@@ -30,7 +30,6 @@ function CandidateHome() {
 
   // Fetch available jobs from your API
   useEffect(() => {
-    console.log("Fetching job data...");
     const fetchData = async () => {
       try {
         const response = await axios.get(
@@ -77,7 +76,10 @@ function CandidateHome() {
   const handleJobClick = (job) => {
     console.log("Selected job:", job);
     localStorage.setItem("selectedJob", JSON.stringify(job));
-    navigate('/upload-resume', { state: { job } });
+    const getuserData = sessionStorage.getItem('user');
+    const email = JSON.parse(getuserData).email;
+    console.log("email ***** ", email)
+    navigate('/upload-resume', { state: { job , email } });
   };
 
   const handleLogout = () => {

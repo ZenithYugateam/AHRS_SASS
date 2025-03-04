@@ -7,11 +7,6 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-// Helper function to format dates
-const formatDate = (dateString) => {
-  const options = { year: 'numeric', month: 'short', day: 'numeric' };
-  return new Date(dateString).toLocaleDateString('en-US', options);
-};
 
 // Status badge component
 const StatusBadge = ({ status, type }) => {
@@ -21,7 +16,6 @@ const StatusBadge = ({ status, type }) => {
         return 'bg-green-100 text-green-800';
       case 'rejected':
         return 'bg-red-100 text-red-800';
-      case 'pending':
       default:
         return 'bg-yellow-100 text-yellow-800';
     }
@@ -80,12 +74,12 @@ function AppliedJobs() {
 
   const fetchAppliedJobs = async (candidateId) => {
     try {
-      // Use your GET API endpoint.
-      const response = await axios.get(
-        `https://ipty8so61e.execute-api.us-east-1.amazonaws.com/default/getappliedjobs?candidateId=${candidateId}`
+      const response = await axios.post(
+        `https://wfm4lgpdh2.execute-api.us-east-1.amazonaws.com/default/get_applied_job_by_candidate`,
+        { candidateId } 
       );
-      // Assuming the API returns an object with an appliedJobs array.
-      setAppliedJobs(response.data.appliedJobs);
+      
+      setAppliedJobs(response.data.candidateJobs);
     } catch (err) {
       console.error("Error fetching applied jobs:", err);
       setError("Failed to fetch applied jobs. Please try again later.");
@@ -93,6 +87,7 @@ function AppliedJobs() {
       setLoading(false);
     }
   };
+  
 
   // Navigate to Candidate Home when clicking "Home" in the navbar.
   const goToHome = () => {
@@ -155,11 +150,11 @@ function AppliedJobs() {
             <p className="text-gray-300">Loading applied jobs...</p>
           ) : error ? (
             <p className="text-red-500">{error}</p>
-          ) : appliedJobs.length === 0 ? (
+          ) : appliedJobs?.length === 0 ? (
             <p className="text-gray-300">No applied jobs found.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {appliedJobs.map((job, index) => (
+              {appliedJobs?.map((job, index) => (
                 <motion.div
                   key={index}
                   className="rounded-lg overflow-hidden shadow-lg bg-gradient-to-br from-[#e100ff] to-[#7f00ff] hover:shadow-xl transition-shadow duration-300"
@@ -176,15 +171,15 @@ function AppliedJobs() {
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center text-gray-300">
                         <Building className="w-4 h-4 mr-2" />
-                        <span>{job.company}</span>
+                        <span>{job.job_title}</span>
                       </div>
                       <div className="flex items-center text-gray-300">
                         <Calendar className="w-4 h-4 mr-2" />
-                        <span>Applied: {formatDate(job.appliedDate)}</span>
+                        <span>experience: {job.experience}</span>
                       </div>
                       <div className="flex items-center text-gray-300">
                         <Clock className="w-4 h-4 mr-2" />
-                        <span>Job ID: {job.jobId}</span>
+                        <span>Job ID: {job.job_description}</span>
                       </div>
                     </div>
                     {/* Card Actions */}
