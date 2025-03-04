@@ -3,19 +3,21 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import ContentLoader from 'react-content-loader';
+import { ChevronDown, User } from 'lucide-react';
 
 function CandidateHome() {
   const [jobData, setJobData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [username, setUsername] = useState("User"); // Default value
+  const [isJobsDropdownOpen, setIsJobsDropdownOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const scrollRef = useRef(null);
   const navigate = useNavigate();
 
   // Retrieve username from session storage
   useEffect(() => {
     const storedUserData = sessionStorage.getItem("user");
-
     if (storedUserData) {
       try {
         const userData = JSON.parse(storedUserData);
@@ -26,6 +28,7 @@ function CandidateHome() {
     }
   }, []);
 
+  // Fetch available jobs from your API
   useEffect(() => {
     console.log("Fetching job data...");
     const fetchData = async () => {
@@ -54,19 +57,23 @@ function CandidateHome() {
         setLoading(false);
       }
     };
-  
+
     fetchData();
   }, []);
-  
 
   const scrollLeft = () => {
-    scrollRef.current.scrollBy({ left: -450, behavior: "smooth" });
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -450, behavior: "smooth" });
+    }
   };
 
   const scrollRight = () => {
-    scrollRef.current.scrollBy({ left: 450, behavior: "smooth" });
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: 450, behavior: "smooth" });
+    }
   };
 
+  // When a job card is clicked, store the job and navigate
   const handleJobClick = (job) => {
     console.log("Selected job:", job);
     localStorage.setItem("selectedJob", JSON.stringify(job));
@@ -77,39 +84,109 @@ function CandidateHome() {
     sessionStorage.removeItem("user");
     navigate("/");
   };
-  
-  
+
+  const toggleJobsDropdown = () => {
+    setIsJobsDropdownOpen(prev => !prev);
+  };
+
+  const toggleProfileDropdown = () => {
+    setIsProfileDropdownOpen(prev => !prev);
+  };
+
+  // Navigate to Applied Jobs page from dropdown
+  const goToAppliedJobs = () => {
+    setIsJobsDropdownOpen(false);
+    navigate('/applied-jobs');
+  };
 
   return (
     <div className="min-h-screen bg-[#0F0B1E] relative">
-      {/* Logout Button */}
-      {/* <div className="absolute top-5 right-5">
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-all"
-        >
-          Logout
-        </button>
-      </div> */}
+      {/* Navigation Bar */}
+      <nav className="bg-[#1A1528] py-4 px-6 shadow-md">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="text-white font-bold text-2xl">247 Interview.com</div>
+          <div className="flex items-center space-x-8">
+            <a href="#" className="text-white hover:text-gray-300 transition-colors">
+              Home
+            </a>
+            {/* Jobs Dropdown */}
+            <div className="relative">
+              <button 
+                className="text-white hover:text-gray-300 transition-colors flex items-center"
+                onClick={toggleJobsDropdown}
+              >
+                Jobs <ChevronDown className="ml-1 h-4 w-4" />
+              </button>
+              {isJobsDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-[#1A1528] rounded-md shadow-lg py-1 z-10">
+                  <a
+                    href="#"
+                    onClick={goToAppliedJobs}
+                    className="block px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
+                  >
+                    Applied Jobs
+                  </a>
+                  <a 
+                    href="#"
+                    className="block px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
+                  >
+                    Offers
+                  </a>
+                </div>
+              )}
+            </div>
+            {/* Profile Dropdown */}
+            <div className="relative">
+              <button 
+                className="flex items-center space-x-2"
+                onClick={toggleProfileDropdown}
+              >
+                <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
+                  <User className="h-6 w-6 text-[#1A1528]" />
+                </div>
+                <span className="text-white">
+                  {username} <ChevronDown className="inline h-4 w-4" />
+                </span>
+              </button>
+              {isProfileDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-[#1A1528] rounded-md shadow-lg py-1 z-10">
+                  <a 
+                    href="#" 
+                    className="block px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
+                  >
+                    Profile
+                  </a>
+                  <a 
+                    href="#" 
+                    className="block px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
+                  >
+                    Settings
+                  </a>
+                  <button 
+                    onClick={handleLogout}
+                    className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="text-3xl font-bold text-white">
-              Welcome, {username}
-            </h2>
-            <p className="text-gray-400 mt-1">
-              Find your dream job with our exclusive listings from top companies.
-            </p>
-          </div>
+        {/* Header Section */}
+        <header className="mb-8">
+          <h2 className="text-3xl font-bold text-white">Welcome, {username}</h2>
+          <p className="text-gray-400 mt-1">
+            Find your dream job with our exclusive listings from top companies.
+          </p>
+        </header>
 
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition duration-300"
-          >
-            Logout
-          </button>
+        {/* Job Listings Header */}
+        <div className="mb-4">
+          <h3 className="text-2xl font-semibold text-white">Job Listings</h3>
         </div>
 
         {/* Jobs Section */}
@@ -186,6 +263,7 @@ function CandidateHome() {
                         <p>{job.job_description || "No description available"}</p>
                       </div>
                     </div>
+                    {/* "Apply" button removed */}
                   </motion.div>
                 ))}
               </div>

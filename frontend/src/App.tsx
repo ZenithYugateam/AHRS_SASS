@@ -10,6 +10,7 @@ import Admindashboard from './components/AdminDashboard/Admindashboard';
 import Landingpage from './components/landingpages/Landingpage';
 import PostJob from './pages/PostJob';
 import InterviewMaker from './pages/interviewmaker';
+import AppliedJobs from './pages/AppliedJobs';
 
 
 function App() {
@@ -18,14 +19,15 @@ function App() {
       <Routes>
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
-          <Route index element={<Landingpage />} />
-          <Route path="/post-job" element={<PostJob />} />
-          <Route path="/candidate-dashboard" element={<CandidateHome />} />
-          <Route path="/interview" element={<InterviewScreen />} />
-          <Route path="/upload-resume" element={<ResumeUpload />} /> 
-          <Route path="/Admin-dashboard" element={<Admindashboard />} />
-          <Route path="/Company-dashboard" element={<Dashboard />} ></Route>
-          <Route path="/interview-maker" element={<InterviewMaker />} /> 
+        <Route index element={<Landingpage />} />
+        <Route path="/post-job" element={<PostJob />} />
+        <Route path="/candidate-dashboard" element={<CandidateHome />} />
+        <Route path="/interview" element={<InterviewScreen />} />
+        <Route path="/upload-resume" element={<ResumeUpload />} /> 
+        <Route path="/applied-jobs" element={<AppliedJobs />} />
+        <Route path="/Admin-dashboard" element={<Admindashboard />} />
+        <Route path="/Company-dashboard" element={<Dashboard />} />
+        <Route path="/interview-maker" element={<InterviewMaker />} />
       </Routes>
     </Router>
   );
