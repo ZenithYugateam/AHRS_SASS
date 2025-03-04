@@ -12,7 +12,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
 function ResumeUpload() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { job } = location.state || {};
+  const { job  , email } = location.state || {};
   
   // Optionally check for job data here
   if (!job) {
@@ -102,32 +102,53 @@ function ResumeUpload() {
     setLoading(true);
 
     try {
-      const resumeText = await extractTextFromPDF(resume);
-      const percentage = await analyzeResumeWithAI(resumeText, job.job_description || '');
-      setMatchPercentage(percentage);
-      setTimeout(() => {
-        if (percentage < 30) {
-          navigate('/candidate-dashboard');
-        }
-      }, 3000);
-    } catch (error) {
-      console.error('Error processing PDF:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+        const resumeText = await extractTextFromPDF(resume);
+        const percentage = await analyzeResumeWithAI(resumeText, job.job_description || '');
+        setMatchPercentage(percentage);
 
-  const handleLater = async () => {
-    try {
-      // Use job.job_id (or another field if applicable)
-      await axios.post('https://example.com/api/notify-later', { jobId: job.job_id });
-      alert('You will be notified later.');
+        if (percentage < 30) {
+            alert(`you are rejected`)
+            await handleLater(5); 
+        } else {
+            setTimeout(() => {
+                navigate('/candidate-dashboard');
+            }, 3000);
+        }
     } catch (error) {
-      console.error('API call failed:', error);
+        console.error('Error processing PDF:', error);
     } finally {
-      navigate('/applied-jobs');
+        setLoading(false);
     }
-  };
+};
+
+  const handleLater = async (status = 4) => {
+    try {
+        const payload = {
+            companyId: job.company_id,
+            jobId: job.job_id,
+            candidateId: email, // Using email as candidate_id
+            status: status
+        };
+
+        await axios.post(
+            'https://l1i2uu3p32.execute-api.us-east-1.amazonaws.com/default/post_candidate_status',
+            payload,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }
+        );
+
+        alert('Your status has been updated. You will be notified later.');
+    } catch (error) {
+        console.error('Failed to update candidate status:', error);
+        alert('An error occurred. Please try again later.');
+    } finally {
+        navigate('/applied-jobs');
+    }
+};
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0F0B1E] to-[#2B2D42] flex flex-col justify-center items-center px-6">
