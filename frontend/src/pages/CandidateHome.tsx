@@ -241,7 +241,7 @@ function CandidateHome() {
                     <div className="w-full flex justify-between">
                       <div className="text-white">
                         <h3 className="text-[18px] lg:text-[20px] font-semibold">
-                          {job.job_title || job.data?.title || job.job_name}
+                          {job.title || job.data?.title || job.title}
                         </h3>
                         <p className="text-[10px] lg:text-[12px] font-thin">
                           {job.company_id}
