@@ -13,20 +13,26 @@ interface Question {
   dynamicAccuracy?: number;
 }
 
+interface AnswerValidation {
+  evaluation: string;
+  score: number;
+}
+
 interface ResponseData {
   questionId: number;
   answer: string;
   correctAnswer?: string;
-  videoUrl?: string; // S3 URL after video upload via pre-signed URL
+  videoUrl?: string;
   dynamicEvaluation?: string;
   dynamicAccuracy?: number;
+  answerValidation?: AnswerValidation;
 }
 
 function InterviewScreen() {
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  // Retrieve job data from navigation state or localStorage
+  // Retrieve job data from navigation state or localStorage.
   const [job, setJob] = useState(() => {
     if (state && state.job) {
       localStorage.setItem("selectedJob", JSON.stringify(state.job));
@@ -36,7 +42,6 @@ function InterviewScreen() {
     return stored ? JSON.parse(stored) : null;
   });
 
-  // If job is missing, redirect back to CandidateHome
   useEffect(() => {
     if (!job) {
       console.error("Job data not provided. Redirecting back to CandidateHome.");
@@ -44,14 +49,17 @@ function InterviewScreen() {
     }
   }, [job, navigate]);
 
-  // Prevent rendering until job data is available
   if (!job) return null;
 
-  // State variables
+  // Retrieve candidate email from local storage (login session).
+  const candidateEmail = localStorage.getItem("candidateEmail") || "codeprabhas11@gmail.com";
+
+  // State variables.
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [totalTime, setTotalTime] = useState(60);
-  const [timeLeft, setTimeLeft] = useState(60);
+  // API sends total_time in minutes; convert to seconds.
+  const [totalTime, setTotalTime] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [answer, setAnswer] = useState("");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -60,12 +68,20 @@ function InterviewScreen() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isInterviewStarted, setIsInterviewStarted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [validationResult, setValidationResult] = useState<any>(null);
-  const [candidateId, setCandidateId] = useState<string>("");
+  // Use candidate email as candidateId.
+  const [candidateId] = useState<string>(candidateEmail);
   const [isPaused, setIsPaused] = useState(false);
   const [pauseMessage, setPauseMessage] = useState("");
   const [submissionLoading, setSubmissionLoading] = useState(false);
   const [dynamicCount, setDynamicCount] = useState(0);
+  const [finalScore, setFinalScore] = useState<number | null>(null);
+  const [maleVoice, setMaleVoice] = useState<SpeechSynthesisVoice | null>(null);
+  // Warning count for copy/tab violations.
+  const [warningCount, setWarningCount] = useState(0);
+  // New state to disable the Next button during processing.
+  const [nextProcessing, setNextProcessing] = useState(false);
+  // Ref to hold the pause timer ID.
+  const pauseTimerRef = useRef<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -78,22 +94,66 @@ function InterviewScreen() {
   // --- Configuration Constants ---
   const OPENAI_API_KEY =
     "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";
-  
   const STORE_INTERVIEW_ENDPOINT =
     "https://vbajfgmatb.execute-api.us-east-1.amazonaws.com/prod/storeInterview";
-
-  // Pre-signed URL endpoint (ensure the path is correct per your setup)
+  const CANDIDATE_STATUS_ENDPOINT =
+    "https://l1i2uu3p32.execute-api.us-east-1.amazonaws.com/default/post_candidate_status";
   const PRESIGNED_URL_ENDPOINT =
     "https://071h9ufh65.execute-api.us-east-1.amazonaws.com/singedurl";
 
-  // --- Effects ---
+  // --- Speech Synthesis Setup (Male Voice) ---
   useEffect(() => {
-    // Initialize speech synthesis
     speechSynthesisRef.current = window.speechSynthesis;
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const maleVoices = voices.filter(
+        (voice) => !voice.name.toLowerCase().includes("female")
+      );
+      setMaleVoice(maleVoices[0] || voices[0]);
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
     return () => {
       speechSynthesisRef.current?.cancel();
     };
   }, []);
+
+  // --- Restrict Copy-Paste and Detect Tab Switching ---
+  useEffect(() => {
+    const handleCopyPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      incrementWarning("Copying/Cutting is not allowed!");
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        incrementWarning("Tab switching is not allowed!");
+      }
+    };
+
+    const incrementWarning = (message: string) => {
+      setWarningCount((prev) => {
+        const newCount = prev + 1;
+        if (newCount < 4) {
+          alert(`${message} Warning ${newCount} of 3.`);
+        } else {
+          alert("You have exceeded the allowed warnings. The interview will be terminated.");
+          navigate("/candidate-dashboard", { state: { message: "Interview terminated due to suspicious activity." } });
+        }
+        return newCount;
+      });
+    };
+
+    window.addEventListener("copy", handleCopyPaste);
+    window.addEventListener("cut", handleCopyPaste);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("copy", handleCopyPaste);
+      window.removeEventListener("cut", handleCopyPaste);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [navigate]);
 
   // --- Fetch Questions using dynamic job parameters ---
   useEffect(() => {
@@ -123,8 +183,10 @@ function InterviewScreen() {
           ...apiQuestions,
         ]);
         if (response.data.total_time) {
-          setTotalTime(response.data.total_time);
-          setTimeLeft(response.data.total_time);
+          // Convert minutes to seconds.
+          const totalSec = response.data.total_time * 60;
+          setTotalTime(totalSec);
+          setTimeLeft(Math.floor(totalSec / (apiQuestions.length + 1)));
         }
       })
       .catch((error) => {
@@ -149,26 +211,32 @@ function InterviewScreen() {
     }
   }, [timeLeft, isInterviewStarted, isPaused]);
 
-  // Update answer from transcript when in voice mode
+  // --- Update answer from transcript ---
   useEffect(() => {
     if (isVoiceMode) {
       setAnswer(transcript);
     }
   }, [transcript, isVoiceMode]);
 
-  // When current question changes, read it aloud and reset timer.
+  // --- Speak the current question once ---
   useEffect(() => {
     if (isInterviewStarted && questions[currentQuestion]) {
+      const perQuestionTime = Math.floor(totalTime / questions.length);
       readQuestion();
-      setTimeLeft(totalTime);
+      setTimeLeft(perQuestionTime);
     }
   }, [currentQuestion, isInterviewStarted, totalTime, questions]);
 
+  // --- Text-to-Speech for Questions ---
   const readQuestion = () => {
     if (speechSynthesisRef.current && questions[currentQuestion]) {
+      speechSynthesisRef.current.cancel();
       const utterance = new SpeechSynthesisUtterance(questions[currentQuestion].text);
       utterance.rate = 0.9;
       utterance.pitch = 1;
+      if (maleVoice) {
+        utterance.voice = maleVoice;
+      }
       speechSynthesisRef.current.speak(utterance);
     }
   };
@@ -177,13 +245,11 @@ function InterviewScreen() {
   const uploadVideoToS3 = async (videoBlob: Blob): Promise<string> => {
     try {
       const currentQuestionId = questions[currentQuestion].id.toString();
-      console.log("Requesting presigned URL with:", { candidateId, questionId: currentQuestionId });
       const presignedResponse = await axios.post(
         PRESIGNED_URL_ENDPOINT,
         { candidateId, questionId: currentQuestionId },
         { headers: { "Content-Type": "application/json" } }
       );
-      console.log("Presigned response:", presignedResponse.data);
       const { uploadURL, fileName } = presignedResponse.data;
       const putResponse = await fetch(uploadURL, {
         method: "PUT",
@@ -193,9 +259,7 @@ function InterviewScreen() {
       if (!putResponse.ok) {
         throw new Error(`S3 upload failed with status ${putResponse.status}`);
       }
-      const videoUrl = `https://avhrsvideobucket.s3.amazonaws.com/${fileName}`;
-      console.log("Uploaded video URL:", videoUrl);
-      return videoUrl;
+      return `https://avhrsvideobucket.s3.amazonaws.com/${fileName}`;
     } catch (error) {
       console.error("Error uploading video to S3:", error);
       throw error;
@@ -230,6 +294,7 @@ function InterviewScreen() {
       };
       mediaRecorder.start();
       setIsRecording(true);
+      analyzeCheating(mediaStream);
     } catch (error) {
       console.error("Error accessing camera:", error);
     }
@@ -242,6 +307,11 @@ function InterviewScreen() {
       setStream(null);
       setIsRecording(false);
     }
+  };
+
+  // --- Placeholder for Cheating Analysis ---
+  const analyzeCheating = (mediaStream: MediaStream) => {
+    console.log("Analyzing live video for cheating... (placeholder)");
   };
 
   const toggleVoiceMode = () => {
@@ -257,11 +327,48 @@ function InterviewScreen() {
     }
   };
 
-  // --- Dynamic Follow-up Generation ---
+  // --- Validate Candidate Answer ---
+  const validateCandidateAnswer = async (candidateAnswer: string, question: Question) => {
+    try {
+      const prompt = `
+Please evaluate the candidate's answer for the following question.
+Question: "${question.text}"
+Candidate Answer: "${candidateAnswer}"
+${question.correctAnswer ? `Correct Answer: "${question.correctAnswer}"` : ""}
+Provide a brief evaluation and a score between 0 and 100.
+Format your response as:
+Evaluation: <your evaluation comment>. Score: <score>%
+      `;
+      const validationResponse = await axios.post(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          model: "gpt-4",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+          },
+        }
+      );
+      const content = validationResponse.data.choices[0].message.content;
+      const [evalPart] = content.split(". Score:");
+      const scoreMatch = content.match(/Score:\s*(\d+)%/);
+      const score = scoreMatch && scoreMatch[1] ? parseInt(scoreMatch[1], 10) : 0;
+      return { evaluation: evalPart.replace("Evaluation:", "").trim(), score };
+    } catch (error) {
+      console.error("Error validating candidate answer:", error);
+      return { evaluation: "Validation failed", score: 0 };
+    }
+  };
+
+  // --- Dynamic Follow-up Generation (limited to 2 dynamic questions) ---
   const generateDynamicQuestion = async (candidateAnswer: string, staticQuestion: Question) => {
     try {
-      if (dynamicCount >= 3)
-        return { dynamicQuestion: " ", dynamicEvaluation: "", dynamicAccuracy: 0 };
+      if (dynamicCount >= 2)
+        return { dynamicQuestion: "", dynamicEvaluation: "", dynamicAccuracy: 0 };
       const prompt = `
 You are a friendly and insightful interviewer. Based on the candidate's response: "${candidateAnswer}",
 ask one natural follow-up question that delves deeper into their project experience without repeating the original question.
@@ -311,25 +418,33 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
       alert("Questions are still loading. Please wait.");
       return;
     }
-    // Generate candidate ID before starting the interview
-    const generatedCandidateId = "cand_" + Math.random().toString(36).substr(2, 9);
-    setCandidateId(generatedCandidateId);
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch((err) =>
+        console.error("Error enabling full-screen mode:", err)
+      );
+    }
     setIsInterviewStarted(true);
-    setTimeLeft(totalTime);
+    setTimeLeft(Math.floor(totalTime / questions.length));
     await startVideoRecording();
     readQuestion();
   };
 
   const handleNextOrFinish = async () => {
+    if (nextProcessing) return;
+    setNextProcessing(true);
+
     if (!questions[currentQuestion]) return;
-    const candidateAnswer = questions[currentQuestion].options
-      ? selectedOption || ""
-      : answer;
+    const candidateAnswer = questions[currentQuestion].options ? selectedOption || "" : answer;
     const currentResponse: ResponseData = {
       questionId: questions[currentQuestion].id,
       answer: candidateAnswer,
       correctAnswer: questions[currentQuestion].correctAnswer,
     };
+
+    const validation = await validateCandidateAnswer(candidateAnswer, questions[currentQuestion]);
+    console.log("Answer Validation:", validation);
+    currentResponse.answerValidation = validation;
+    
     const { dynamicQuestion, dynamicEvaluation, dynamicAccuracy } =
       await generateDynamicQuestion(candidateAnswer, questions[currentQuestion]);
     if (dynamicQuestion) {
@@ -345,47 +460,85 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     setResponses((prev) => [...prev, currentResponse]);
     stopVideoRecording();
 
-    // Transition pause between questions
+    // Enter animated pause state.
     setIsPaused(true);
-    setPauseMessage("Great response! Now, please wait while we move to the next question. Remember, take a deep breath and relax.");
-    setAnswer("");
-    setSelectedOption(null);
-    resetTranscript();
+    setPauseMessage("Processing your response...");
+    speechSynthesisRef.current?.cancel();
 
-    setTimeout(async () => {
-      setIsPaused(false);
-      if (currentQuestion < questions.length - 1) {
-        setCurrentQuestion((prev) => prev + 1);
-        setTimeLeft(totalTime);
-        await startVideoRecording();
-      } else {
-        setIsInterviewStarted(false);
-      }
+    pauseTimerRef.current = window.setTimeout(() => {
+      resumeInterview();
     }, 5000);
+  };
+
+  // Function to resume interview after pause.
+  const resumeInterview = async () => {
+    setIsPaused(false);
+    setNextProcessing(false);
+    if (pauseTimerRef.current) {
+      clearTimeout(pauseTimerRef.current);
+      pauseTimerRef.current = null;
+    }
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion((prev) => prev + 1);
+      setTimeLeft(Math.floor(totalTime / questions.length));
+      await startVideoRecording();
+    } else {
+      // Last question answered; auto-submit.
+      setIsInterviewStarted(false);
+      submitInterview();
+    }
+  };
+
+  // --- Final Evaluation & Submission ---
+  const evaluateInterview = async () => {
+    const totalValidatedScore = responses.reduce((acc, res) => acc + (res.answerValidation?.score || 0), 0);
+    const avgValidatedScore = responses.length > 0 ? totalValidatedScore / responses.length : 0;
+    setFinalScore(avgValidatedScore);
+    return avgValidatedScore;
   };
 
   const submitInterview = async () => {
     if (!candidateId || responses.length === 0) {
-      console.error("Candidate ID or responses are missing:", candidateId, responses);
       alert("Candidate ID or responses are missing. Please complete the interview before submitting.");
       return;
     }
     setSubmissionLoading(true);
     try {
-      const payload = { candidateId, jobId: job.job_id || job.id, responses };
-      console.log("Submitting payload:", payload);
-      const lambdaResponse = await axios.post(
+      const avgValidatedScore = await evaluateInterview();
+      const candidateStatus = avgValidatedScore > 40 ? 10 : 5;
+      await axios.post(
+        CANDIDATE_STATUS_ENDPOINT,
+        { 
+          candidateId, 
+          companyId: job.company_id, 
+          jobId: job.job_id || job.id,
+          status: candidateStatus 
+        },
+        { headers: { "Content-Type": "application/json" } }
+      );
+      const payload = { 
+        candidateId, 
+        jobId: job.job_id || job.id, 
+        responses, 
+        finalScore: avgValidatedScore 
+      };
+      await axios.post(
         STORE_INTERVIEW_ENDPOINT,
         payload,
         { headers: { "Content-Type": "application/json" } }
       );
-      const data = lambdaResponse.data;
-      console.log("Validation result:", data);
-      setValidationResult(data);
       setSubmitted(true);
+      // Instead of showing candidate answers, display a neat thank-you card.
+      // Wait for 3 seconds before redirecting.
+      setTimeout(() => {
+        navigate("/candidate-dashboard", { state: { message: "Thanks for attending the interview, we will update you soon." } });
+      }, 3000);
     } catch (error) {
       console.error("Error during submission:", error);
-      setValidationResult({ error: "Submission failed" });
+      setSubmitted(true);
+      setTimeout(() => {
+        navigate("/candidate-dashboard", { state: { message: "Thanks for attending the interview, we will update you soon." } });
+      }, 3000);
     } finally {
       setSubmissionLoading(false);
     }
@@ -395,12 +548,12 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     <div className="min-h-screen bg-[#0F0B1E] text-white p-8">
       {!isInterviewStarted ? (
         <div className="max-w-3xl mx-auto">
-          {responses.length === 0 ? (
+          {!submitted ? (
             <div className="bg-[#1A1528] rounded-xl p-8 shadow-lg border border-gray-800 text-center">
               <h2 className="text-2xl font-bold mb-6">Ready to Start Your Interview?</h2>
               <p className="text-gray-300 mb-8">
                 The interview will begin with a question about your project experience.
-                You will have {totalTime} seconds to answer each question.
+                You will have {totalTime / 60} minutes total to answer all questions.
                 Your video and audio will be recorded during the interview.
               </p>
               <button
@@ -412,47 +565,10 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
               </button>
             </div>
           ) : (
+            // Neat Thank You Card after submission.
             <div className="bg-[#1A1528] rounded-xl p-8 shadow-lg border border-gray-800 text-center">
-              <h2 className="text-2xl font-bold mb-6">Interview Completed!</h2>
-              <div className="space-y-6 mt-8">
-                {responses.map((response, index) => (
-                  <div key={index} className="border-b border-gray-700 pb-4">
-                    <p className="font-semibold mb-2">
-                      Question {index + 1}: {questions[index]?.text}
-                    </p>
-                    <p className="text-gray-300 mb-2">
-                      Your Answer: {response.answer}
-                      {response.correctAnswer && ` | Correct Answer: ${response.correctAnswer}`}
-                    </p>
-                    {response.dynamicEvaluation && (
-                      <p className="mt-1 text-green-300">
-                        Evaluation: {response.dynamicEvaluation}
-                        {response.dynamicAccuracy ? ` (Accuracy: ${response.dynamicAccuracy}%)` : ""}
-                      </p>
-                    )}
-                    {response.videoUrl && (
-                      <div className="mt-2 text-sm text-gray-400">
-                        Video S3 URL: {response.videoUrl}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {!submitted && (
-                <button
-                  onClick={submitInterview}
-                  disabled={submissionLoading}
-                  className="mt-6 px-6 py-3 bg-gradient-to-r from-green-500 to-blue-500 rounded-lg hover:from-green-600 hover:to-blue-600 transition-colors"
-                >
-                  {submissionLoading ? "Submitting..." : "Submit Interview"}
-                </button>
-              )}
-              {validationResult && (
-                <div className="mt-6 p-4 bg-green-100 text-black rounded">
-                  <h3 className="font-bold">Validation Result</h3>
-                  <pre>{JSON.stringify(validationResult, null, 2)}</pre>
-                </div>
-              )}
+              <h2 className="text-2xl font-bold mb-4">Thanks for attending the interview</h2>
+              <p className="text-gray-300">We will update you soon.</p>
             </div>
           )}
         </div>
@@ -460,7 +576,20 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
         <div className="max-w-3xl mx-auto">
           {isPaused ? (
             <div className="bg-[#1A1528] rounded-xl p-8 shadow-lg border border-gray-800 text-center">
-              <p className="text-xl">{pauseMessage}</p>
+              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-xl mb-4">{pauseMessage}</p>
+              <button
+                onClick={() => {
+                  if (pauseTimerRef.current) {
+                    clearTimeout(pauseTimerRef.current);
+                    pauseTimerRef.current = null;
+                  }
+                  resumeInterview();
+                }}
+                className="px-4 py-2 bg-red-500 rounded hover:bg-red-600 transition-colors"
+              >
+                Skip Wait
+              </button>
             </div>
           ) : (
             <div className="bg-[#1A1528] rounded-xl p-8 shadow-lg border border-gray-800">
@@ -511,18 +640,14 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
                   <div className="flex gap-4 mb-4">
                     <button
                       onClick={() => setIsVoiceMode(false)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                        !isVoiceMode ? "bg-purple-600" : "bg-[#2A1528]"
-                      }`}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg ${!isVoiceMode ? "bg-purple-600" : "bg-[#2A1528]"}`}
                     >
                       <Type className="w-5 h-5" />
                       Text
                     </button>
                     <button
                       onClick={toggleVoiceMode}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                        isVoiceMode ? "bg-purple-600" : "bg-[#2A1528]"
-                      }`}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg ${isVoiceMode ? "bg-purple-600" : "bg-[#2A1528]"}`}
                     >
                       <Mic className="w-5 h-5" />
                       Voice {listening && "(Recording...)"}
@@ -540,7 +665,8 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
               <div className="flex justify-end mt-8">
                 <button
                   onClick={handleNextOrFinish}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-500 rounded-lg hover:from-purple-700 hover:to-blue-600 transition-colors"
+                  disabled={nextProcessing}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-500 rounded-lg hover:from-purple-700 hover:to-blue-600 transition-colors disabled:opacity-50"
                 >
                   {currentQuestion === questions.length - 1 ? "Finish" : "Next Question"}
                 </button>
