@@ -100,6 +100,12 @@ function CandidateHome() {
     setIsJobsDropdownOpen(false);
     navigate('/applied-jobs');
   };
+  
+  const goTooffers = () => {
+    setIsJobsDropdownOpen(false);
+    navigate('/offers');
+  };
+
 
   return (
     <div className="min-h-screen bg-[#0F0B1E] relative">
@@ -130,6 +136,7 @@ function CandidateHome() {
                   </a>
                   <a 
                     href="#"
+                    onClick={goTooffers}
                     className="block px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
                   >
                     Offers
