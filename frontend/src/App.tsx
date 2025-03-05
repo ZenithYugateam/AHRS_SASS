@@ -11,6 +11,8 @@ import Landingpage from './components/landingpages/Landingpage';
 import PostJob from './pages/PostJob';
 import InterviewMaker from './pages/interviewmaker';
 import AppliedJobs from './pages/AppliedJobs';
+import Offers from './pages/Offers';
+
 
 
 function App() {
@@ -25,6 +27,7 @@ function App() {
         <Route path="/interview" element={<InterviewScreen />} />
         <Route path="/upload-resume" element={<ResumeUpload />} /> 
         <Route path="/applied-jobs" element={<AppliedJobs />} />
+        <Route path="/offers" element={<Offers />} />
         <Route path="/Admin-dashboard" element={<Admindashboard />} />
         <Route path="/Company-dashboard" element={<Dashboard />} />
         <Route path="/interview-maker" element={<InterviewMaker />} />
