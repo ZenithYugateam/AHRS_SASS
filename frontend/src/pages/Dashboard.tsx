@@ -40,7 +40,6 @@ const ChevronUp = ({ size = 24, ...props }: { size?: number }) => (
   </svg>
 );
 
-
 const ChevronDown = ({ size = 24, ...props }: { size?: number }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -58,8 +57,8 @@ const ChevronDown = ({ size = 24, ...props }: { size?: number }) => (
   </svg>
 );
 
-// Define types for pricing data
-interface PricingPlan {
+// Define types for subscription plan and pricing data
+interface SubscriptionPlan {
   id: string;
   name: string;
   price: number;
@@ -67,12 +66,7 @@ interface PricingPlan {
   features: string[];
   tokens: number;
   interviews: number;
-  popular?: boolean;
-  current?: boolean;
   duration?: string;
-  tokensPerMinute?: string;
-  revenue?: string;
-  subscribers?: string;
 }
 
 interface TokenPackage {
@@ -85,7 +79,7 @@ interface TokenPackage {
 }
 
 interface PricingData {
-  plans: PricingPlan[];
+  plans: SubscriptionPlan[];
   tokenPackages: TokenPackage[];
 }
 
@@ -100,19 +94,7 @@ interface Job {
   company_id: string;
 }
 
-// Default plan data to use before API data is loaded
-const defaultPlan: PricingPlan = {
-  id: 'professional',
-  name: 'Professional',
-  price: 79,
-  description: 'Ideal for growing companies',
-  features: ['1000 tokens per month', 'Up to 20 interviews', 'Advanced analytics', 'Custom branding'],
-  tokens: 1000,
-  interviews: 20,
-  current: true
-};
-
-// Default pricing data to use before API data is loaded
+// Default pricing data for token packages and additional plans
 const defaultPricingData: PricingData = {
   plans: [
     {
@@ -122,7 +104,7 @@ const defaultPricingData: PricingData = {
       description: 'Perfect for startups and small businesses',
       features: ['300 tokens per month', 'Up to 10 interviews', 'Basic analytics'],
       tokens: 300,
-      interviews: 10
+      interviews: 10,
     },
     {
       id: 'professional',
@@ -132,7 +114,6 @@ const defaultPricingData: PricingData = {
       features: ['1000 tokens per month', 'Up to 20 interviews', 'Advanced analytics', 'Custom branding'],
       tokens: 1000,
       interviews: 20,
-      current: true
     },
     {
       id: 'enterprise',
@@ -141,7 +122,7 @@ const defaultPricingData: PricingData = {
       description: 'For large organizations with high volume',
       features: ['3000 tokens per month', 'Unlimited interviews', 'Premium analytics & reporting', 'Custom branding', 'API access'],
       tokens: 3000,
-      interviews: 999
+      interviews: 999,
     }
   ],
   tokenPackages: [
@@ -172,76 +153,96 @@ const defaultPricingData: PricingData = {
 
 function Dashboard() {
   const navigate = useNavigate();
+
+  // User details from session storage
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+
+  // Additional states
   const [isSubscriptionExpanded, setIsSubscriptionExpanded] = useState(false);
-  // currentPage tracks which section to show: 'home', 'packages', or 'interview-maker'
   const [currentPage, setCurrentPage] = useState('home');
   const [jobs, setJobs] = useState<Job[]>([]);
   const [pricingData, setPricingData] = useState<PricingData>(defaultPricingData);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentPlan, setCurrentPlan] = useState<PricingPlan>(defaultPlan);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<TokenPackage | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentType, setPaymentType] = useState<'token' | 'plan' | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  const email = sessionStorage.getItem("email");
+  // The current plan, fetched from your subscription API
+  const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
 
+  // On mount, parse the "user" object from sessionStorage
   useEffect(() => {
-    // Fetch user details from session storage
-    const userData = sessionStorage.getItem("user"); // Ensure correct key
+    const userData = sessionStorage.getItem("user");
+    console.log("User Data:", userData);
     if (userData) {
       try {
-        const parsedData = JSON.parse(userData);
-        setUserName(parsedData.username ); // Use "User" as fallback
-        setUserEmail(parsedData.email || "No Email Found");
-
+        const parsed = JSON.parse(userData);
+        setUserName(parsed.username);
+        setUserEmail(parsed.email || "No Email Found");
+        setSessionEmail(parsed.email);
       } catch (error) {
-        console.error("Error parsing session storage data:", error);
+        console.error("Error parsing user data:", error);
       }
+    } else {
+      setIsLoading(false);
     }
   }, []);
 
-  const toggleSubscription = () => {
-    setIsSubscriptionExpanded(!isSubscriptionExpanded);
-  };
-
-  const navigateTo = (page: string) => {
-    setCurrentPage(page);
-    // Reset subscription panel state when navigating
-    if (page !== 'home') {
-      setIsSubscriptionExpanded(false);
-    }
-  };
-
-  // When Interview Maker is selected, display it inline by updating currentPage
-  const openInterviewMaker = () => {
-    setCurrentPage('interview-maker');
-  };
-
-  useEffect(() => {
-    fetchCompanyJobs();
-    fetchPricingData();
-  }, []);
-
-  // Update current plan whenever pricing data changes
-  useEffect(() => {
-    if (pricingData && pricingData.plans) {
-      const foundPlan = pricingData.plans.find(plan => plan.current);
-      if (foundPlan) {
-        setCurrentPlan(foundPlan);
+  // Fetch subscription details from your API
+  const fetchUserSubscription = async () => {
+    setIsLoading(true);
+    try {
+      if (!sessionEmail) {
+        console.warn("No email found in session storage for subscription fetch.");
+        setIsLoading(false);
+        return;
       }
-    }
-  }, [pricingData]);
+      // Call your subscription API
+      const response = await axios.get(
+        `https://ywl2agqqd3.execute-api.us-east-1.amazonaws.com/default/fechdetails?email=${sessionEmail}`
+      );
+      console.log("Subscription API Response:", response.data);
 
+      // Check if there's at least one subscription
+      if (response.data && response.data.subscriptions && response.data.subscriptions.length > 0) {
+        const sub = response.data.subscriptions[0];
+        setCurrentPlan({
+          id: sub.transactionId || "unknown",
+          name: sub.subscriptionType || "Unknown Plan",
+          price: 0,
+          description: "Your active subscription plan",
+          features: [
+            `Tokens Left: ${sub.tokensLeft}`,
+            `Tokens Purchased: ${sub.tokensPurchased}`,
+            `Transaction ID: ${sub.transactionId}`,
+          ],
+          tokens: parseInt(sub.tokensLeft) || 0,
+          interviews: 0,
+          duration: "N/A",
+        });
+      } else {
+        console.warn("No subscription found in response:", response.data);
+        setCurrentPlan(null);
+      }
+    } catch (error) {
+      console.error("Error fetching user subscription details:", error);
+      setCurrentPlan(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch posted jobs from your API
   const fetchCompanyJobs = async () => {
     try {
       const response = await axios.post(
         'https://ujohw8hshk.execute-api.us-east-1.amazonaws.com/default/get_company_posted_jobs',
-        { company_id: '12345' } // Replace with dynamic company ID as needed
-      );  
+        { company_id: '12345' }
+      );
       setJobs(response.data.jobs || []);
     } catch (error) {
       console.error('Error fetching jobs:', error);
@@ -249,18 +250,15 @@ function Dashboard() {
     }
   };
 
+  // Fetch pricing data from your API
   const fetchPricingData = async () => {
     setIsLoading(true);
     try {
       const response = await axios.get(
         'https://ngwu0au0uh.execute-api.us-east-1.amazonaws.com/default/get_pricing_list'
       );
-      
-      // Check if the response has the expected format
       if (response.data) {
-        // If the response is an array or has a different structure than expected
         if (Array.isArray(response.data) || typeof response.data === 'object') {
-          // Try to transform the data into our expected format
           const transformedData = transformApiResponse(response.data);
           setPricingData(transformedData);
         } else {
@@ -273,19 +271,17 @@ function Dashboard() {
       }
     } catch (error) {
       console.error('Error fetching pricing data:', error);
-      // Set fallback data if API fails
       setPricingData(defaultPricingData);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Transform API response to match our expected format
+  // Transform the pricing API response to match the PricingData structure
   const transformApiResponse = (apiData: any): PricingData => {
-    // If the API returns a single subscription object
+    // Single subscription object
     if (apiData && !Array.isArray(apiData) && apiData.id && apiData.name) {
-      // Create a plan from the single subscription
-      const plan: PricingPlan = {
+      const plan: SubscriptionPlan = {
         id: apiData.id || 'subscription',
         name: apiData.name || 'Subscription',
         price: parseInt(apiData.price) || 0,
@@ -296,15 +292,11 @@ function Dashboard() {
           `${apiData.tokensPerMinute || 'N/A'} tokens per minute`
         ],
         tokens: parseInt(apiData.tokens) || 0,
-        interviews: 20, // Default value
+        interviews: 20,
         current: true,
         duration: apiData.duration,
-        tokensPerMinute: apiData.tokensPerMinute,
-        revenue: apiData.revenue,
-        subscribers: apiData.subscribers
       };
 
-      // Create a token package from the subscription
       const tokenPackage: TokenPackage = {
         id: 'additional',
         name: `${Math.floor(parseInt(apiData.tokens) / 2)} Additional Tokens`,
@@ -320,9 +312,9 @@ function Dashboard() {
       };
     }
     
-    // If the API returns an array of subscriptions
+    // Array of subscriptions
     if (Array.isArray(apiData)) {
-      const plans: PricingPlan[] = apiData.map((item, index) => ({
+      const plans: SubscriptionPlan[] = apiData.map((item, index) => ({
         id: item.id || `plan-${index}`,
         name: item.name || `Plan ${index + 1}`,
         price: parseInt(item.price) || 0,
@@ -333,12 +325,9 @@ function Dashboard() {
           `${item.tokensPerMinute || 'N/A'} tokens per minute`
         ],
         tokens: parseInt(item.tokens) || 0,
-        interviews: 20, // Default value
-        current: index === 0, // Mark the first one as current
+        interviews: 20,
+        current: index === 0,
         duration: item.duration,
-        tokensPerMinute: item.tokensPerMinute,
-        revenue: item.revenue,
-        subscribers: item.subscribers
       }));
 
       const tokenPackages: TokenPackage[] = apiData.map((item, index) => ({
@@ -356,17 +345,46 @@ function Dashboard() {
       };
     }
 
-    // If we can't transform the data, return default data
+    // Fallback
     return defaultPricingData;
   };
 
-  // Placeholder function for applying to a job
+  // On mount or when sessionEmail changes, fetch data
+  useEffect(() => {
+    // If we have an email, fetch subscription
+    if (sessionEmail) {
+      fetchUserSubscription();
+    }
+    // Always fetch jobs and pricing
+    fetchCompanyJobs();
+    fetchPricingData();
+  }, [sessionEmail]);
+
+  // Toggling subscription panel
+  const toggleSubscription = () => {
+    setIsSubscriptionExpanded(!isSubscriptionExpanded);
+  };
+
+  // Navigation helper
+  const navigateTo = (page: string) => {
+    setCurrentPage(page);
+    if (page !== 'home') {
+      setIsSubscriptionExpanded(false);
+    }
+  };
+
+  // "Interview Maker" page
+  const openInterviewMaker = () => {
+    setCurrentPage('interview-maker');
+  };
+
+  // Handle applying to a job
   const handleApply = (job: Job) => {
     console.log('Applying to job:', job);
     navigate("/interview-maker", { state: job });
   };
 
-  // Handle purchasing a token package
+  // Handle token package purchase
   const handlePurchaseTokens = (pkg: TokenPackage) => {
     setSelectedPackage(pkg);
     setSelectedPlan(null);
@@ -374,54 +392,69 @@ function Dashboard() {
     setPaymentModalOpen(true);
   };
 
-  // Handle selecting a subscription plan
-  const handleSelectPlan = (plan: PricingPlan) => {
+  // Handle subscription plan selection
+  const handleSelectPlan = (plan: SubscriptionPlan) => {
     setSelectedPlan(plan);
     setSelectedPackage(null);
     setPaymentType('plan');
     setPaymentModalOpen(true);
   };
 
-  // Handle successful payment
+  // Payment success: update tokens or plan
   const handlePaymentSuccess = () => {
-    // Update user's tokens or plan based on what they purchased
     if (paymentType === 'token' && selectedPackage) {
-      // In a real app, you would update the user's token balance in your backend
       console.log(`Added ${selectedPackage.tokens} tokens to user account`);
+      // Update currentPlan tokens automatically
+      setCurrentPlan(prevPlan => {
+        if (prevPlan) {
+          return { ...prevPlan, tokens: prevPlan.tokens + selectedPackage.tokens };
+        } else {
+          // If no subscription exists, create a minimal one with the purchased tokens
+          return {
+            id: "token-purchase",
+            name: "Token Purchase",
+            price: 0,
+            description: "Tokens added from purchase",
+            features: [`Tokens Purchased: ${selectedPackage.tokens}`],
+            tokens: selectedPackage.tokens,
+            interviews: 0,
+            duration: "N/A"
+          };
+        }
+      });
     } else if (paymentType === 'plan' && selectedPlan) {
-      // In a real app, you would update the user's subscription in your backend
       console.log(`Updated subscription to ${selectedPlan.name} plan`);
-      
-      // Update current plan in the UI
+      // Mark that plan as current in your local pricing data
       const updatedPlans = pricingData.plans.map(plan => ({
         ...plan,
         current: plan.id === selectedPlan.id
       }));
-      
       setPricingData({
         ...pricingData,
         plans: updatedPlans
       });
-      
       setCurrentPlan(selectedPlan);
     }
-    
-    // Show success message
+
+    // Show a payment success message
     setPaymentSuccess(true);
     setTimeout(() => {
       setPaymentSuccess(false);
     }, 5000);
   };
 
-  // Usage stats (hardcoded for demo)
-  const tokensUsed = 450;
-  const tokensRemaining = currentPlan.tokens - tokensUsed;
-  const tokensPercentage = Math.floor((tokensUsed / currentPlan.tokens) * 100);
-  
-  const interviewsUsed = 6;
-  const interviewsRemaining = currentPlan.interviews - interviewsUsed;
-  const interviewsPercentage = Math.floor((interviewsUsed / currentPlan.interviews) * 100);
-  const emailFromSession = sessionStorage.getItem("email");
+  // Usage stats
+  const tokensUsed = 0;
+  const tokensRemaining = currentPlan ? currentPlan.tokens - tokensUsed : 0;
+  const tokensPercentage = currentPlan && currentPlan.tokens > 0
+    ? Math.floor((tokensUsed / currentPlan.tokens) * 100)
+    : 0;
+
+  const interviewsUsed = 0;
+  const interviewsRemaining = currentPlan ? currentPlan.interviews - interviewsUsed : 0;
+  const interviewsPercentage = currentPlan && currentPlan.interviews > 0
+    ? Math.floor((interviewsUsed / currentPlan.interviews) * 100)
+    : 0;
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-white">
@@ -438,13 +471,17 @@ function Dashboard() {
         isOpen={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         amount={selectedPackage ? selectedPackage.price : selectedPlan ? selectedPlan.price : 0}
-        description={selectedPackage 
-          ? `Purchase ${selectedPackage.name} (${selectedPackage.tokens} tokens)` 
-          : selectedPlan 
-            ? `Subscribe to ${selectedPlan.name} Plan` 
-            : ''}
+        description={
+          selectedPackage
+            ? `Purchase ${selectedPackage.name} (${selectedPackage.tokens} tokens)`
+            : selectedPlan
+            ? `Subscribe to ${selectedPlan.name} Plan`
+            : ''
+        }
         onSuccess={handlePaymentSuccess}
-        email={userEmail}
+        tokensPurchased={selectedPackage ? selectedPackage.tokens : undefined}
+        subscriptionType={selectedPlan ? selectedPlan.name : undefined}
+        email={userEmail || ""}
       />
 
       {/* Header */}
@@ -511,7 +548,7 @@ function Dashboard() {
           <>
             {currentPage === 'home' && (
               <>
-                {/* Post New Job Button */}
+                {/* Button to post a new job */}
                 <div className="flex justify-end mb-8">
                   <button
                     onClick={() => navigate('/post-job')}
@@ -523,7 +560,6 @@ function Dashboard() {
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  {/* Total Interviews */}
                   <div className="bg-purple-600 rounded-lg p-6">
                     <div className="flex justify-between items-start">
                       <div>
@@ -535,8 +571,6 @@ function Dashboard() {
                       <BarChart3 size={24} />
                     </div>
                   </div>
-
-                  {/* Total Participants */}
                   <div className="bg-blue-500 rounded-lg p-6">
                     <div className="flex justify-between items-start">
                       <div>
@@ -548,8 +582,6 @@ function Dashboard() {
                       <Users size={24} />
                     </div>
                   </div>
-
-                  {/* Total Qualified */}
                   <div className="bg-red-500 rounded-lg p-6">
                     <div className="flex justify-between items-start">
                       <div>
@@ -567,74 +599,83 @@ function Dashboard() {
 
             {currentPage === 'packages' && (
               <>
-                {/* Packages Page */}
                 <div className="mb-8">
                   <h2 className="text-3xl font-bold mb-6">Subscription & Packages</h2>
-                  {/* Current Plan Overview */}
-                  <div className="bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg p-6 mb-8">
-                    <div className="flex flex-col md:flex-row justify-between">
-                      <div>
-                        <div className="flex items-center mb-4">
-                          <CreditCard className="mr-2" />
-                          <h3 className="text-xl font-bold">Current Plan: {currentPlan.name}</h3>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <p className="text-sm text-purple-200 mb-1">Tokens Usage</p>
-                            <div className="w-full bg-purple-900 rounded-full h-3 mb-1">
-                              <div className="bg-white h-3 rounded-full" style={{ width: `${tokensPercentage}%` }}></div>
+
+                  {/* Current Subscription Overview */}
+                  {!currentPlan ? (
+                    <div className="bg-red-500 p-4 rounded-lg mb-8">
+                      <p>No active subscription found for this user.</p>
+                    </div>
+                  ) : (
+                    <div className="bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg p-6 mb-8">
+                      <div className="flex flex-col md:flex-row justify-between">
+                        <div>
+                          <div className="flex items-center mb-4">
+                            <CreditCard className="mr-2" />
+                            <h3 className="text-xl font-bold">Current Plan: {currentPlan.name}</h3>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <p className="text-sm text-purple-200 mb-1">Tokens Usage</p>
+                              <div className="w-full bg-purple-900 rounded-full h-3 mb-1">
+                                <div
+                                  className="bg-white h-3 rounded-full"
+                                  style={{ width: `${tokensPercentage}%` }}
+                                ></div>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>0 used</span>
+                                <span>{currentPlan.tokens} remaining</span>
+                              </div>
                             </div>
-                            <div className="flex justify-between text-sm">
-                              <span>{tokensUsed} used</span>
-                              <span>{tokensRemaining} remaining</span>
+                            <div>
+                              <p className="text-sm text-purple-200 mb-1">Interviews Conducted</p>
+                              <div className="w-full bg-purple-900 rounded-full h-3 mb-1">
+                                <div
+                                  className="bg-white h-3 rounded-full"
+                                  style={{ width: `${interviewsPercentage}%` }}
+                                ></div>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>0 used</span>
+                                <span>{currentPlan.interviews} remaining</span>
+                              </div>
                             </div>
                           </div>
-                          <div>
-                            <p className="text-sm text-purple-200 mb-1">Interviews Conducted</p>
-                            <div className="w-full bg-purple-900 rounded-full h-3 mb-1">
-                              <div className="bg-white h-3 rounded-full" style={{ width: `${interviewsPercentage}%` }}></div>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span>{interviewsUsed} used</span>
-                              <span>{interviewsRemaining} remaining</span>
-                            </div>
+                        </div>
+                        <div className="mt-6 md:mt-0 flex flex-col justify-center items-start md:items-end">
+                          <div className="flex space-x-3 mt-2">
+                            <button 
+                              className="bg-white text-purple-700 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium"
+                              onClick={() => handleSelectPlan(currentPlan)}
+                            >
+                              Renew Plan
+                            </button>
+                            <button 
+                              className="bg-purple-900 text-white hover:bg-purple-800 px-4 py-2 rounded-md text-sm font-medium"
+                              onClick={() => {
+                                const enterprisePlan = pricingData.plans.find(p => p.id === 'enterprise');
+                                if (enterprisePlan) handleSelectPlan(enterprisePlan);
+                              }}
+                            >
+                              Upgrade
+                            </button>
                           </div>
-                        </div>
-                      </div>
-                      <div className="mt-6 md:mt-0 flex flex-col justify-center items-start md:items-end">
-                        <div className="flex items-center mb-2">
-                          <Clock size={16} className="mr-2" />
-                          <span>
-                            Expires in: <strong>{currentPlan.duration || '23'} days</strong>
-                          </span>
-                        </div>
-                        <div className="flex space-x-3 mt-2">
-                          <button 
-                            className="bg-white text-purple-700 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium"
-                            onClick={() => handleSelectPlan(currentPlan)}
-                          >
-                            Renew Plan
-                          </button>
-                          <button 
-                            className="bg-purple-900 text-white hover:bg-purple-800 px-4 py-2 rounded-md text-sm font-medium"
-                            onClick={() => {
-                              const enterprisePlan = pricingData.plans.find(p => p.id === 'enterprise');
-                              if (enterprisePlan) handleSelectPlan(enterprisePlan);
-                            }}
-                          >
-                            Upgrade
-                          </button>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                   
                   {/* Token Packages */}
                   <div className="bg-gray-800 rounded-lg p-6 mb-8">
                     <h3 className="text-xl font-bold mb-4">Need More Tokens?</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {pricingData.tokenPackages && pricingData.tokenPackages.map((pkg) => (
-                        <div key={pkg.id} className="bg-gray-700 p-4 rounded-lg hover:bg-gray-600 transition-colors cursor-pointer relative">
+                      {pricingData.tokenPackages.map((pkg) => (
+                        <div
+                          key={pkg.id}
+                          className="bg-gray-700 p-4 rounded-lg hover:bg-gray-600 transition-colors cursor-pointer relative"
+                        >
                           {pkg.popular && (
                             <div className="absolute -top-3 -right-3 bg-purple-500 text-white text-xs px-2 py-1 rounded-full">
                               Popular
@@ -643,7 +684,7 @@ function Dashboard() {
                           <h4 className="font-bold mb-2">{pkg.name}</h4>
                           <p className="text-2xl font-bold mb-2">${pkg.price}</p>
                           <p className="text-sm text-gray-300 mb-4">{pkg.description}</p>
-                          <button 
+                          <button
                             className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded text-sm"
                             onClick={() => handlePurchaseTokens(pkg)}
                           >
@@ -654,10 +695,10 @@ function Dashboard() {
                     </div>
                   </div>
                   
-                  {/* Subscription Plans */}
+                  {/* Available Plans */}
                   <h3 className="text-2xl font-bold mb-4">Available Subscription Plans</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                    {pricingData.plans && pricingData.plans.map((plan) => (
+                    {pricingData.plans.map((plan) => (
                       <div 
                         key={plan.id} 
                         className={`${
@@ -673,11 +714,16 @@ function Dashboard() {
                         )}
                         <div className="p-6">
                           <h4 className="text-xl font-bold mb-2">{plan.name}</h4>
-                          <p className="text-3xl font-bold mb-4">${plan.price}<span className="text-sm font-normal">/month</span></p>
-                          <p className={`text-sm ${plan.current ? 'text-purple-200' : 'text-gray-300'} mb-6`}>{plan.description}</p>
+                          <p className="text-3xl font-bold mb-4">
+                            ${plan.price}
+                            <span className="text-sm font-normal">/month</span>
+                          </p>
+                          <p className={`text-sm ${plan.current ? 'text-purple-200' : 'text-gray-300'} mb-6`}>
+                            {plan.description}
+                          </p>
                           
                           <ul className="space-y-3 mb-6">
-                            {plan.features && plan.features.map((feature, index) => {
+                            {plan.features.map((feature, index) => {
                               const isIncluded = !feature.includes('API access') || plan.id === 'enterprise';
                               return (
                                 <li key={index} className="flex items-start">
@@ -686,7 +732,9 @@ function Dashboard() {
                                   ) : (
                                     <X size={18} className="text-red-400 mr-2 mt-0.5" />
                                   )}
-                                  <span className={!isIncluded ? 'text-gray-400' : ''}>{feature}</span>
+                                  <span className={!isIncluded ? 'text-gray-400' : ''}>
+                                    {feature}
+                                  </span>
                                 </li>
                               );
                             })}
@@ -703,7 +751,11 @@ function Dashboard() {
                             </button>
                           ) : (
                             <button 
-                              className={`w-full ${plan.id === 'enterprise' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-700 hover:bg-gray-600'} py-3 rounded text-sm font-medium`}
+                              className={`w-full ${
+                                plan.id === 'enterprise'
+                                  ? 'bg-purple-600 hover:bg-purple-700'
+                                  : 'bg-gray-700 hover:bg-gray-600'
+                              } py-3 rounded text-sm font-medium`}
                               onClick={() => handleSelectPlan(plan)}
                             >
                               {plan.id === 'enterprise' ? 'Upgrade' : 'Choose Plan'}
@@ -734,70 +786,68 @@ function Dashboard() {
             )}
 
             {currentPage === 'interview-maker' && (
-              <>
-                <div className="min-h-screen bg-gray-900 text-white p-8">
-                  <div className="max-w-7xl mx-auto">
-                    <h1 className="text-4xl font-bold mb-8">Company Posted Jobs</h1>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {jobs.length > 0 ? (
-                        jobs.map((job) => (
-                          <div
-                            key={job.job_id}
-                            className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-all duration-300"
-                          >
-                            <div className="flex items-center mb-4">
-                              <Briefcase className="mr-2" />
-                              <h2 className="text-xl font-bold">{job.job_title}</h2>
-                            </div>
-                            <p className="text-gray-300 mb-4 line-clamp-3">
-                              {job.job_description || "No description available."}
-                            </p>
-                            <div className="flex flex-wrap gap-2 mb-4">
-                              {job.experience && (
-                                <span className="bg-gray-700 text-sm px-3 py-1 rounded-full">
-                                  {job.experience}
-                                </span>
-                              )}
-                              {job.location && (
-                                <div className="flex items-center bg-gray-700 text-sm px-3 py-1 rounded-full">
-                                  <MapPin size={14} className="mr-1" />
-                                  <span>{job.location}</span>
-                                </div>
-                              )}
-                              {job.salary && (
-                                <div className="flex items-center bg-gray-700 text-sm px-3 py-1 rounded-full">
-                                  <DollarSign size={14} className="mr-1" />
-                                  <span>{job.salary}</span>
-                                </div>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => handleApply(job)}
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition-colors"
-                            >
-                              APPLY NOW
-                            </button>
+              <div className="min-h-screen bg-gray-900 text-white p-8">
+                <div className="max-w-7xl mx-auto">
+                  <h1 className="text-4xl font-bold mb-8">Company Posted Jobs</h1>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {jobs.length > 0 ? (
+                      jobs.map((job) => (
+                        <div
+                          key={job.job_id}
+                          className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-all duration-300"
+                        >
+                          <div className="flex items-center mb-4">
+                            <Briefcase className="mr-2" />
+                            <h2 className="text-xl font-bold">{job.job_title}</h2>
                           </div>
-                        ))
-                      ) : (
-                        <div className="col-span-3 text-center py-12">
-                          <div className="mb-4">
-                            <Briefcase size={48} className="mx-auto text-gray-500" />
+                          <p className="text-gray-300 mb-4 line-clamp-3">
+                            {job.job_description || "No description available."}
+                          </p>
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {job.experience && (
+                              <span className="bg-gray-700 text-sm px-3 py-1 rounded-full">
+                                {job.experience}
+                              </span>
+                            )}
+                            {job.location && (
+                              <div className="flex items-center bg-gray-700 text-sm px-3 py-1 rounded-full">
+                                <MapPin size={14} className="mr-1" />
+                                <span>{job.location}</span>
+                              </div>
+                            )}
+                            {job.salary && (
+                              <div className="flex items-center bg-gray-700 text-sm px-3 py-1 rounded-full">
+                                <DollarSign size={14} className="mr-1" />
+                                <span>{job.salary}</span>
+                              </div>
+                            )}
                           </div>
-                          <h3 className="text-xl font-medium mb-2">No jobs found</h3>
-                          <p className="text-gray-400">There are currently no jobs posted by your company.</p>
-                          <button 
-                            onClick={() => navigate('/post-job')}
-                            className="mt-4 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md inline-flex items-center"
+                          <button
+                            onClick={() => handleApply(job)}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition-colors"
                           >
-                            <PlusCircle size={16} className="mr-2" /> Post a New Job
+                            APPLY NOW
                           </button>
                         </div>
-                      )}
-                    </div>
+                      ))
+                    ) : (
+                      <div className="col-span-3 text-center py-12">
+                        <div className="mb-4">
+                          <Briefcase size={48} className="mx-auto text-gray-500" />
+                        </div>
+                        <h3 className="text-xl font-medium mb-2">No jobs found</h3>
+                        <p className="text-gray-400">There are currently no jobs posted by your company.</p>
+                        <button 
+                          onClick={() => navigate('/post-job')}
+                          className="mt-4 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md inline-flex items-center"
+                        >
+                          <PlusCircle size={16} className="mr-2" /> Post a New Job
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </>
         )}
@@ -805,7 +855,11 @@ function Dashboard() {
 
       {/* Subscription Panel - Only visible on home page */}
       {currentPage === 'home' && (
-        <div className={`fixed bottom-0 left-0 right-0 bg-gray-800 transition-all duration-300 ${isSubscriptionExpanded ? 'h-64' : 'h-16'}`}>
+        <div
+          className={`fixed bottom-0 left-0 right-0 bg-gray-800 transition-all duration-300 ${
+            isSubscriptionExpanded ? 'h-64' : 'h-16'
+          }`}
+        >
           <div className="flex items-center justify-between p-4 border-b border-gray-700">
             <div className="flex items-center">
               <button
@@ -816,7 +870,10 @@ function Dashboard() {
               </button>
               <div>
                 <p className="font-medium">
-                  Current Plan: <span className="text-purple-400">{currentPlan.name}</span>
+                  Current Plan:{' '}
+                  <span className="text-purple-400">
+                    {currentPlan ? currentPlan.name : 'No Plan'}
+                  </span>
                 </p>
               </div>
             </div>
@@ -836,16 +893,26 @@ function Dashboard() {
                   <div>
                     <p className="text-sm text-gray-300">Tokens Used</p>
                     <div className="w-full bg-gray-600 rounded-full h-2.5">
-                      <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: `${tokensPercentage}%` }}></div>
+                      <div
+                        className="bg-purple-600 h-2.5 rounded-full"
+                        style={{ width: `${tokensPercentage}%` }}
+                      ></div>
                     </div>
-                    <p className="text-xs text-right mt-1">{tokensUsed} / {currentPlan.tokens}</p>
+                    <p className="text-xs text-right mt-1">
+                      {tokensUsed} / {currentPlan ? currentPlan.tokens : 0}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-300">Interviews Conducted</p>
                     <div className="w-full bg-gray-600 rounded-full h-2.5">
-                      <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${interviewsPercentage}%` }}></div>
+                      <div
+                        className="bg-blue-500 h-2.5 rounded-full"
+                        style={{ width: `${interviewsPercentage}%` }}
+                      ></div>
                     </div>
-                    <p className="text-xs text-right mt-1">{interviewsUsed} / {currentPlan.interviews}</p>
+                    <p className="text-xs text-right mt-1">
+                      {interviewsUsed} / {currentPlan ? currentPlan.interviews : 0}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -853,7 +920,7 @@ function Dashboard() {
               <div className="bg-gray-700 p-4 rounded-lg">
                 <h3 className="font-bold mb-2">Available Plans</h3>
                 <div className="space-y-2">
-                  {pricingData.plans && pricingData.plans.map(plan => (
+                  {pricingData.plans.map((plan) => (
                     <div key={plan.id} className="flex justify-between items-center">
                       <p className="text-sm">{plan.name}</p>
                       <p className={`text-sm font-bold ${plan.current ? 'text-purple-400' : ''}`}>
@@ -873,7 +940,7 @@ function Dashboard() {
               </div>
             </div>
           )}
-        </div>  
+        </div>
       )}
     </div>
   );
