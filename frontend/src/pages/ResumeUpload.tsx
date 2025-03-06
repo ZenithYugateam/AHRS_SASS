@@ -106,13 +106,11 @@ function ResumeUpload() {
         const percentage = await analyzeResumeWithAI(resumeText, job.job_description || '');
         setMatchPercentage(percentage);
 
-        if (percentage < 30) {
-            alert(`you are rejected`)
-            await handleLater(5); 
-        } else {
-            setTimeout(() => {
-                navigate('/candidate-dashboard');
-            }, 3000);
+        if (percentage < 30) { 
+            setLoading(false);
+            alert(`your resume Rejected`)
+            await handleLater(5);
+            navigate('/candidate-dashboard');
         }
     } catch (error) {
         console.error('Error processing PDF:', error);
@@ -205,7 +203,7 @@ function ResumeUpload() {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={handleLater}
+                  onClick={()=> handleLater()}
                   className="px-6 py-3 bg-yellow-500 rounded-lg shadow-lg text-white hover:bg-yellow-600"
                 >
                   Later

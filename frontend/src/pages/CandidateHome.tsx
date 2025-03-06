@@ -100,6 +100,12 @@ function CandidateHome() {
     setIsJobsDropdownOpen(false);
     navigate('/applied-jobs');
   };
+  
+  const goTooffers = () => {
+    setIsJobsDropdownOpen(false);
+    navigate('/offers');
+  };
+
 
   return (
     <div className="min-h-screen bg-[#0F0B1E] relative">
@@ -130,6 +136,7 @@ function CandidateHome() {
                   </a>
                   <a 
                     href="#"
+                    onClick={goTooffers}
                     className="block px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
                   >
                     Offers
@@ -234,7 +241,7 @@ function CandidateHome() {
                     <div className="w-full flex justify-between">
                       <div className="text-white">
                         <h3 className="text-[18px] lg:text-[20px] font-semibold">
-                          {job.job_title || job.data?.title || job.job_name}
+                          {job.title || job.data?.title || job.title}
                         </h3>
                         <p className="text-[10px] lg:text-[12px] font-thin">
                           {job.company_id}
@@ -262,7 +269,7 @@ function CandidateHome() {
                       </div>
                       <div className="text-[12px] lg:text-[16px] text-white">
                         <h4>Job Description</h4>
-                        <p>{job.job_description || "No description available"}</p>
+                        <p>{job.description || "No description available"}</p>
                       </div>
                     </div>
                     {/* "Apply" button removed */}

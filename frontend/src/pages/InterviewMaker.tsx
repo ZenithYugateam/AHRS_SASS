@@ -58,13 +58,15 @@ function InterviewMaker() {
 
   const [interviewType, setInterviewType] = useState<'selection' | 'ai' | 'custom'>('selection');
   const [showPreview, setShowPreview] = useState(false);
+  // We'll no longer rely on previewSummary.total_time for total time,
+  // so previewSummary is used only for generated num_questions and total_marks if needed.
   const [previewSummary, setPreviewSummary] = useState<PreviewSummary | null>(null);
   const [formData, setFormData] = useState<InterviewFormData>({
     job_id: job.job_id || '',
     company_id: job.company_id || '',
     experience: job.experience || '',
-    job_title: job.job_title || '',
-    job_description: job.job_description || '',
+    job_title: job.title || '',
+    job_description: job.description || '',
     manager_approval: false,
     compulsory: false,
     total_time: '30',
@@ -138,8 +140,8 @@ function InterviewMaker() {
       job_id: job.job_id || '',
       company_id: job.company_id || '',
       experience: job.experience || '',
-      job_title: job.job_title || '',
-      job_description: job.job_description || '',
+      job_title: job.title || '',
+      job_description: job.description || '',
       manager_approval: false,
       compulsory: false,
       total_time: '30',
@@ -201,7 +203,6 @@ Return only valid JSON.`;
   }
 
   // Preview step (for both AI and Custom flows)
-  // For AI interview, we optionally generate questions before previewing.
   const handlePreview = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -269,6 +270,14 @@ Return only valid JSON.`;
 
   // --- Render Section ---
 
+  // Helper component to display job details (only Company ID, Job ID, and Job Title)
+  const JobDetails = () => {
+    if (!job || Object.keys(job).length === 0) return null;
+    return (
+      null
+    );
+  };
+
   // Preview Screen (common for both flows)
   if (showPreview) {
     return (
@@ -286,14 +295,12 @@ Return only valid JSON.`;
             <p className="text-sm text-gray-400">Marks: {formData.marks[index] || 'N/A'}</p>
           </div>
         ))}
-        {previewSummary && (
-          <div className="mt-6 p-4 bg-gray-700 rounded-md border border-gray-600">
-            <h3 className="font-semibold">Interview Summary:</h3>
-            <p>Total Time: {previewSummary.total_time} minutes</p>
-            <p>Number of Questions: {previewSummary.num_questions}</p>
-            <p>Total Marks: {previewSummary.total_marks}</p>
-          </div>
-        )}
+        <div className="mt-6 p-4 bg-gray-700 rounded-md border border-gray-600">
+          <h3 className="font-semibold">Interview Summary:</h3>
+          <p>Total Time: {formData.total_time} minutes</p>
+          <p>Number of Questions: {formData.questions.length}</p>
+          <p>Total Marks: {totalMarks}</p>
+        </div>
         <div className="flex justify-end mt-6">
           <button
             onClick={finalSubmit}
@@ -359,31 +366,33 @@ Return only valid JSON.`;
         <button onClick={goBack} className="flex items-center text-gray-300 hover:text-white mb-6">
           <ArrowLeft size={20} className="mr-2" /> Back to selection
         </button>
+        {/* Display prepopulated job details */}
+        <JobDetails />
         <div className="max-w-3xl mx-auto bg-gray-800 rounded-lg p-8 shadow-lg">
           <h1 className="text-2xl font-bold mb-6 flex items-center">
             <Zap size={24} className="text-purple-400 mr-2" /> Create AI Interview
           </h1>
           <form onSubmit={handlePreview} className="space-y-6">
-            {/* Common Job Details */}
+            {/* Common Job Details - You can choose to make these read-only */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <Briefcase size={16} className="mr-2" /> Job ID
                 </label>
-                <input type="number" name="job_id" value={formData.job_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required />
+                <input type="number" name="job_id" value={formData.job_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.job_id} />
               </div>
               <div>
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <Building size={16} className="mr-2" /> Company ID
                 </label>
-                <input type="text" name="company_id" value={formData.company_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required />
+                <input type="text" name="company_id" value={formData.company_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.company_id} />
               </div>
             </div>
             <div>
               <label className="block text-gray-300 mb-2 flex items-center">
                 <Award size={16} className="mr-2" /> Job Title
               </label>
-              <input type="text" name="job_title" value={formData.job_title} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required />
+              <input type="text" name="job_title" value={formData.job_title} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.job_title} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -431,25 +440,7 @@ Return only valid JSON.`;
             </div>
             <div>
               <label className="block text-gray-300 mb-2">Job Description</label>
-              <textarea name="job_description" value={formData.job_description} onChange={handleInputChange} rows={4} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required placeholder="Provide a detailed job description..." ></textarea>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-gray-300 mb-2 flex items-center">
-                  <Clock size={16} className="mr-2" /> Total Time (minutes)
-                </label>
-                <input type="number" name="total_time" value={formData.total_time} onChange={handleInputChange} min="5" max="120" className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required />
-              </div>
-              <div className="flex flex-col justify-end">
-                <div className="flex items-center mb-3">
-                  <input type="checkbox" id="manager_approval" name="manager_approval" checked={formData.manager_approval} onChange={handleCheckboxChange} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded" />
-                  <label htmlFor="manager_approval" className="ml-2 block text-gray-300">Requires Manager Approval</label>
-                </div>
-                <div className="flex items-center">
-                  <input type="checkbox" id="compulsory" name="compulsory" checked={formData.compulsory} onChange={handleCheckboxChange} className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded" />
-                  <label htmlFor="compulsory" className="ml-2 block text-gray-300">Compulsory Interview</label>
-                </div>
-              </div>
+              <textarea name="job_description" value={formData.job_description} onChange={handleInputChange} rows={4} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required placeholder="Provide a detailed job description..." readOnly={!!formData.job_description}></textarea>
             </div>
             <div className="flex justify-end">
               <button type="submit" disabled={isSubmitting} className={`bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md font-medium flex items-center ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
@@ -479,6 +470,8 @@ Return only valid JSON.`;
         <button onClick={goBack} className="flex items-center text-gray-300 hover:text-white mb-6">
           <ArrowLeft size={20} className="mr-2" /> Back to selection
         </button>
+        {/* Display prepopulated job details */}
+        <JobDetails />
         <div className="max-w-3xl mx-auto bg-gray-800 rounded-lg p-8 shadow-lg">
           <h1 className="text-2xl font-bold mb-6 flex items-center">
             <User size={24} className="text-blue-400 mr-2" /> Create Custom Interview
@@ -490,32 +483,24 @@ Return only valid JSON.`;
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <Briefcase size={16} className="mr-2" /> Job ID
                 </label>
-                <input type="number" name="job_id" value={formData.job_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required />
+                <input type="number" name="job_id" value={formData.job_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.job_id} />
               </div>
               <div>
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <Building size={16} className="mr-2" /> Company ID
                 </label>
-                <input type="text" name="company_id" value={formData.company_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required />
+                <input type="text" name="company_id" value={formData.company_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.company_id} />
               </div>
             </div>
             <div>
               <label className="block text-gray-300 mb-2 flex items-center">
                 <Award size={16} className="mr-2" /> Job Title
               </label>
-              <input type="text" name="job_title" value={formData.job_title} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required />
+              <input type="text" name="job_title" value={formData.job_title} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.job_title} />
             </div>
             <div>
-              <label className="block text-gray-300 mb-2 flex items-center">
-                <Award size={16} className="mr-2" /> Experience Level
-              </label>
-              <input type="text" name="experience" value={formData.experience} onChange={handleInputChange} placeholder="e.g., 3 years, Entry Level, Senior" className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required />
-            </div>
-            <div>
-              <label className="block text-gray-300 mb-2 flex items-center">
-                <FileText size={16} className="mr-2" /> Job Description
-              </label>
-              <textarea name="job_description" value={formData.job_description} onChange={handleInputChange} rows={4} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required></textarea>
+              <label className="block text-gray-300 mb-2">Job Description</label>
+              <textarea name="job_description" value={formData.job_description} onChange={handleInputChange} rows={4} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.job_description}></textarea>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -593,9 +578,12 @@ Return only valid JSON.`;
               </button>
             </div>
           </form>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  return null;
 }
-}
+
 export default InterviewMaker;

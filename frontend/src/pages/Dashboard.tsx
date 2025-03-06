@@ -236,12 +236,14 @@ function Dashboard() {
     }
   };
 
-  // Fetch posted jobs from your API
+
   const fetchCompanyJobs = async () => {
     try {
+      const storedUser = sessionStorage.getItem('user');
+      const companyId = storedUser ? JSON.parse(storedUser).email : 'default@example.com';
       const response = await axios.post(
         'https://ujohw8hshk.execute-api.us-east-1.amazonaws.com/default/get_company_posted_jobs',
-        { company_id: '12345' }
+        { company_id: companyId }
       );
       setJobs(response.data.jobs || []);
     } catch (error) {
@@ -468,6 +470,7 @@ function Dashboard() {
 
       {/* Payment Modal */}
       <PaymentModal 
+
   isOpen={paymentModalOpen}
   onClose={() => setPaymentModalOpen(false)}
   amount={selectedPackage ? selectedPackage.price : selectedPlan ? selectedPlan.price : 0}
@@ -484,6 +487,7 @@ function Dashboard() {
   subscriptionType={selectedPlan ? selectedPlan.name : undefined}
   email={userEmail || ""}
 />
+
 
 
       {/* Header */}
@@ -551,6 +555,7 @@ function Dashboard() {
             {currentPage === 'home' && (
               <>
                 {/* Button to post a new job */}
+
                 <div className="flex justify-end mb-8">
                   <button
                     onClick={() => navigate('/post-job')}
@@ -559,6 +564,7 @@ function Dashboard() {
                     <PlusCircle size={20} /> Post New Job
                   </button>
                 </div>
+
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -789,6 +795,15 @@ function Dashboard() {
 
             {currentPage === 'interview-maker' && (
               <div className="min-h-screen bg-gray-900 text-white p-8">
+
+                 <div className="flex justify-end mb-8">
+                  <button
+                    onClick={() => navigate('/post-job')}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#1A1528] text-white border border-gray-700 rounded-lg hover:bg-[#2A2538] transition-colors"
+                  >
+                    <PlusCircle size={20} /> Post New Job
+                  </button>
+                </div>
                 <div className="max-w-7xl mx-auto">
                   <h1 className="text-4xl font-bold mb-8">Company Posted Jobs</h1>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -800,10 +815,12 @@ function Dashboard() {
                         >
                           <div className="flex items-center mb-4">
                             <Briefcase className="mr-2" />
-                            <h2 className="text-xl font-bold">{job.job_title}</h2>
+
+                            <h2 className="text-xl font-bold">{job.title}</h2>
                           </div>
                           <p className="text-gray-300 mb-4 line-clamp-3">
-                            {job.job_description || "No description available."}
+                            {job.description || "No description available."}
+
                           </p>
                           <div className="flex flex-wrap gap-2 mb-4">
                             {job.experience && (
@@ -947,5 +964,6 @@ function Dashboard() {
     </div>
   );
 }
+
 
 export default Dashboard;
