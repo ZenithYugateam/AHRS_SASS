@@ -12,8 +12,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
 function ResumeUpload() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { job  , email } = location.state || {};
-  
+  const { job, email } = location.state || {};
+
   // Optionally check for job data here
   if (!job) {
     console.error("Job data not provided");
@@ -57,13 +57,15 @@ function ResumeUpload() {
     });
   };
 
+  // Update the analyzeResumeWithAI function
   const analyzeResumeWithAI = async (resumeText: string, jobDescription: string) => {
     try {
-      const apiKey = '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'; // Replace with your actual API key
+      const apiKey = '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'; // Replace with your actual OpenRouter API key
+
       const response = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
+        'https://openrouter.ai/api/v1/chat/completions', // OpenRouter API URL
         {
-          model: 'gpt-4o',
+          model: 'qwen/qwq-32b:free', // Use the appropriate model for your use case
           messages: [
             {
               role: 'system',
@@ -71,7 +73,7 @@ function ResumeUpload() {
             },
             {
               role: 'user',
-              content: `Job Description:\n${job.job_description || ''}\n\nResume:\n${resumeText}\n\nProvide a match percentage from 0 to 100, indicating how well the resume matches the job description.`,
+              content: `Job Description:\n${jobDescription || ''}\n\nResume:\n${resumeText || ''}\n\nProvide a match percentage from 0 to 100, indicating how well the resume matches the job description.`,
             },
           ],
         },
@@ -88,11 +90,11 @@ function ResumeUpload() {
       const percentageMatch = parseFloat(
         (aiMessage.match(/(\d+)%/g) || []).pop()?.replace('%', '') || '0'
       );
-      
+
       console.log("***** ai percentage ", percentageMatch);
       return percentageMatch;
     } catch (error) {
-      console.error('Error analyzing resume with AI:', error);
+      console.error('Error analyzing resume with AI:', error.response ? error.response.data : error);
       return 0;
     }
   };
@@ -102,51 +104,50 @@ function ResumeUpload() {
     setLoading(true);
 
     try {
-        const resumeText = await extractTextFromPDF(resume);
-        const percentage = await analyzeResumeWithAI(resumeText, job.job_description || '');
-        setMatchPercentage(percentage);
+      const resumeText = await extractTextFromPDF(resume);
+      const percentage = await analyzeResumeWithAI(resumeText, job.job_description || '');
+      setMatchPercentage(percentage);
 
-        if (percentage < 30) { 
-            setLoading(false);
-            alert(`your resume Rejected`)
-            await handleLater(5);
-            navigate('/candidate-dashboard');
-        }
-    } catch (error) {
-        console.error('Error processing PDF:', error);
-    } finally {
+      if (percentage < 30) {
         setLoading(false);
+        alert(`Your resume is rejected.`);
+        await handleLater(5);
+        navigate('/candidate-dashboard');
+      }
+    } catch (error) {
+      console.error('Error processing PDF:', error);
+    } finally {
+      setLoading(false);
     }
-};
+  };
 
   const handleLater = async (status = 4) => {
     try {
-        const payload = {
-            companyId: job.company_id,
-            jobId: job.job_id,
-            candidateId: email, // Using email as candidate_id
-            status: status
-        };
+      const payload = {
+        companyId: job.company_id,
+        jobId: job.job_id,
+        candidateId: email, // Using email as candidate_id
+        status: status,
+      };
 
-        await axios.post(
-            'https://l1i2uu3p32.execute-api.us-east-1.amazonaws.com/default/post_candidate_status',
-            payload,
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            }
-        );
+      await axios.post(
+        'https://l1i2uu3p32.execute-api.us-east-1.amazonaws.com/default/post_candidate_status',
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-        alert('Your status has been updated. You will be notified later.');
+      alert('Your status has been updated. You will be notified later.');
     } catch (error) {
-        console.error('Failed to update candidate status:', error);
-        alert('An error occurred. Please try again later.');
+      console.error('Failed to update candidate status:', error);
+      alert('An error occurred. Please try again later.');
     } finally {
-        navigate('/applied-jobs');
+      navigate('/applied-jobs');
     }
-};
-
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0F0B1E] to-[#2B2D42] flex flex-col justify-center items-center px-6">
@@ -203,7 +204,7 @@ function ResumeUpload() {
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={()=> handleLater()}
+                  onClick={() => handleLater()}
                   className="px-6 py-3 bg-yellow-500 rounded-lg shadow-lg text-white hover:bg-yellow-600"
                 >
                   Later

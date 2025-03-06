@@ -93,7 +93,7 @@ function InterviewScreen() {
 
   // --- Configuration Constants ---
   const OPENAI_API_KEY =
-    "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";
+    "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";
   const STORE_INTERVIEW_ENDPOINT =
     "https://vbajfgmatb.execute-api.us-east-1.amazonaws.com/prod/storeInterview";
   const CANDIDATE_STATUS_ENDPOINT =
@@ -340,9 +340,9 @@ Format your response as:
 Evaluation: <your evaluation comment>. Score: <score>%
       `;
       const validationResponse = await axios.post(
-        "https://api.openai.com/v1/chat/completions",
+        "https://openrouter.ai/api/v1/chat/completions",
         {
-          model: "gpt-4",
+          model: "qwen/qwq-32b:free",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
         },
@@ -378,9 +378,9 @@ Follow-up Question: <your question>
 Evaluation: <your evaluation comment>. Accuracy: <percentage>%
       `;
       const chatGPTResponse = await axios.post(
-        "https://api.openai.com/v1/chat/completions",
+        "https://openrouter.ai/api/v1/chat/completions",
         {
-          model: "gpt-4",
+          model: "qwen/qwq-32b:free",
           messages: [{ role: "user", content: prompt }],
           temperature: 0.7,
         },
