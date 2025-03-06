@@ -468,21 +468,23 @@ function Dashboard() {
 
       {/* Payment Modal */}
       <PaymentModal 
-        isOpen={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        amount={selectedPackage ? selectedPackage.price : selectedPlan ? selectedPlan.price : 0}
-        description={
-          selectedPackage
-            ? `Purchase ${selectedPackage.name} (${selectedPackage.tokens} tokens)`
-            : selectedPlan
-            ? `Subscribe to ${selectedPlan.name} Plan`
-            : ''
-        }
-        onSuccess={handlePaymentSuccess}
-        tokensPurchased={selectedPackage ? selectedPackage.tokens : undefined}
-        subscriptionType={selectedPlan ? selectedPlan.name : undefined}
-        email={userEmail || ""}
-      />
+  isOpen={paymentModalOpen}
+  onClose={() => setPaymentModalOpen(false)}
+  amount={selectedPackage ? selectedPackage.price : selectedPlan ? selectedPlan.price : 0}
+  description={
+    selectedPackage
+      ? `Purchase ${selectedPackage.name} (${selectedPackage.tokens} tokens)`
+      : selectedPlan
+      ? `Subscribe to ${selectedPlan.name} Plan`
+      : ''
+  }
+  onSuccess={handlePaymentSuccess}
+  tokensPurchased={selectedPackage ? selectedPackage.tokens : undefined}
+  tokensLeft={selectedPackage ? selectedPackage.tokens : undefined} // ✅ Added tokensLeft
+  subscriptionType={selectedPlan ? selectedPlan.name : undefined}
+  email={userEmail || ""}
+/>
+
 
       {/* Header */}
       <header className="flex items-center justify-between p-4 border-b border-gray-800">
