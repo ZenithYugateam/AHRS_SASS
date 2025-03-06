@@ -9,9 +9,10 @@ import ResumeUpload from './pages/ResumeUpload';
 import Admindashboard from './components/AdminDashboard/Admindashboard';
 import Landingpage from './components/landingpages/Landingpage';
 import PostJob from './pages/PostJob';
-import InterviewMaker from './pages/interviewmaker';
+import InterviewMaker from './pages/InterviewMaker';
 import AppliedJobs from './pages/AppliedJobs';
 import Offers from './pages/Offers';
+import CandidateDetailsPage from './pages/CandidateDetailsPage';
 
 
 
@@ -31,6 +32,7 @@ function App() {
         <Route path="/Admin-dashboard" element={<Admindashboard />} />
         <Route path="/Company-dashboard" element={<Dashboard />} />
         <Route path="/interview-maker" element={<InterviewMaker />} />
+        <Route path="/total-interview" element={<CandidateDetailsPage/>}/>;
       </Routes>
     </Router>
   );
