@@ -236,6 +236,7 @@ function Dashboard() {
     }
   };
 
+
   const fetchCompanyJobs = async () => {
     try {
       const storedUser = sessionStorage.getItem('user');
@@ -469,21 +470,25 @@ function Dashboard() {
 
       {/* Payment Modal */}
       <PaymentModal 
-        isOpen={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        amount={selectedPackage ? selectedPackage.price : selectedPlan ? selectedPlan.price : 0}
-        description={
-          selectedPackage
-            ? `Purchase ${selectedPackage.name} (${selectedPackage.tokens} tokens)`
-            : selectedPlan
-            ? `Subscribe to ${selectedPlan.name} Plan`
-            : ''
-        }
-        onSuccess={handlePaymentSuccess}
-        tokensPurchased={selectedPackage ? selectedPackage.tokens : undefined}
-        subscriptionType={selectedPlan ? selectedPlan.name : undefined}
-        email={userEmail || ""}
-      />
+
+  isOpen={paymentModalOpen}
+  onClose={() => setPaymentModalOpen(false)}
+  amount={selectedPackage ? selectedPackage.price : selectedPlan ? selectedPlan.price : 0}
+  description={
+    selectedPackage
+      ? `Purchase ${selectedPackage.name} (${selectedPackage.tokens} tokens)`
+      : selectedPlan
+      ? `Subscribe to ${selectedPlan.name} Plan`
+      : ''
+  }
+  onSuccess={handlePaymentSuccess}
+  tokensPurchased={selectedPackage ? selectedPackage.tokens : undefined}
+  tokensLeft={selectedPackage ? selectedPackage.tokens : undefined} // ✅ Added tokensLeft
+  subscriptionType={selectedPlan ? selectedPlan.name : undefined}
+  email={userEmail || ""}
+/>
+
+
 
       {/* Header */}
       <header className="flex items-center justify-between p-4 border-b border-gray-800">
@@ -550,6 +555,16 @@ function Dashboard() {
             {currentPage === 'home' && (
               <>
                 {/* Button to post a new job */}
+
+                <div className="flex justify-end mb-8">
+                  <button
+                    onClick={() => navigate('/post-job')}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#1A1528] text-white border border-gray-700 rounded-lg hover:bg-[#2A2538] transition-colors"
+                  >
+                    <PlusCircle size={20} /> Post New Job
+                  </button>
+                </div>
+
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -780,6 +795,7 @@ function Dashboard() {
 
             {currentPage === 'interview-maker' && (
               <div className="min-h-screen bg-gray-900 text-white p-8">
+
                  <div className="flex justify-end mb-8">
                   <button
                     onClick={() => navigate('/post-job')}
@@ -799,10 +815,12 @@ function Dashboard() {
                         >
                           <div className="flex items-center mb-4">
                             <Briefcase className="mr-2" />
+
                             <h2 className="text-xl font-bold">{job.title}</h2>
                           </div>
                           <p className="text-gray-300 mb-4 line-clamp-3">
                             {job.description || "No description available."}
+
                           </p>
                           <div className="flex flex-wrap gap-2 mb-4">
                             {job.experience && (
@@ -946,5 +964,6 @@ function Dashboard() {
     </div>
   );
 }
+
 
 export default Dashboard;

@@ -16,8 +16,7 @@ import {
 import axios from 'axios';
 
 // NOTE: Exposing your API key in client code is not secure for production.
-const OPENAI_API_KEY = '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';
-
+const OPENAI_API_KEY = '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';
 type Question = {
   question: string;
   answer: string;
@@ -175,9 +174,9 @@ Soft Skills: ${formData.soft_skills}
 Return only valid JSON.`;
 
     const chatGPTResponse = await axios.post(
-      "https://api.openai.com/v1/chat/completions",
+      "https://openrouter.ai/api/v1/chat/completions",
       {
-        model: "gpt-4",
+        model: "qwen/qwq-32b:free",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.7,
       },
