@@ -269,7 +269,7 @@ function CandidateHome() {
                       </div>
                       <div className="text-[12px] lg:text-[16px] text-white">
                         <h4>Job Description</h4>
-                        <p>{job.job_description || "No description available"}</p>
+                        <p>{job.description || "No description available"}</p>
                       </div>
                     </div>
                     {/* "Apply" button removed */}
