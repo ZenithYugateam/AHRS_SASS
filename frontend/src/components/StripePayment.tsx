@@ -36,7 +36,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     try {
       setIsProcessing(true);
       setError(null);
-
+  
       // ✅ Construct payload based on your expected JSON structure
       const payload = {
         email: email, // ✅ Add email at the top level
@@ -50,20 +50,20 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         subscriptionDetails: {
           email: email,  
           type: subscriptionType,
-          tokensPurchased: tokensPurchased
-
+          tokensPurchased: tokensPurchased,
+          tokensLeft: tokensPurchased // ✅ Add tokensLeft with the same value as tokensPurchased
         }
       };
-
+  
       // ✅ Log payload for debugging
       console.log("Final Payment Payload:", JSON.stringify(payload, null, 2));
-
+  
       // ✅ POST the payload (including email in both places) to your API
       await axios.post(
         "https://l8kyqmz0fc.execute-api.us-east-1.amazonaws.com/default/test",
         payload
       );
-
+  
       setIsProcessing(false);
       onSuccess();
     } catch (err) {
@@ -72,6 +72,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       setIsProcessing(false);
     }
   };
+  
 
   const handlePayment = () => {
     setError(null);
