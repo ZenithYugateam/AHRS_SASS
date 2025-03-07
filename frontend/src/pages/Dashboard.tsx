@@ -306,7 +306,7 @@ function Dashboard() {
               candidateId: candidate.candidateId,
               jobId: job.job_id,
               status: candidate.status,
-              title: job.job_title || 'N/A',
+              title: job.title || 'N/A',
               postedOn: job.posted_on || 'N/A',
             });
           });
@@ -839,7 +839,7 @@ function Dashboard() {
                         >
                           <div className="flex items-center mb-4">
                             <Briefcase className="mr-2" />
-                            <h2 className="text-xl font-bold">{job.job_title}</h2>
+                            <h2 className="text-xl font-bold">{job.title}</h2>
                           </div>
                           <p className="text-gray-300 mb-4 line-clamp-3">
                             {job.description || "No description available."}
