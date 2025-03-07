@@ -1,9 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { Link, useNavigate } from 'react-router-dom';
 import { Home, Package, Mic, UserCircle, Menu, Search, ChevronUp, ChevronDown } from 'lucide-react';
 
 // Navbar Component
 function Navbar() {
+  const navigate = useNavigate();
+  const [userName, setUserName] = useState<string | null>(null);
+
+  // Retrieve username from session storage
+  useEffect(() => {
+    const userData = sessionStorage.getItem("user");
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        // Use the 'name' property if available, otherwise fallback to email.
+        setUserName(parsedUser.name || parsedUser.email);
+      } catch (error) {
+        console.error("Error parsing user data from session storage:", error);
+      }
+    }
+  }, []);
+
   return (
     <nav className="bg-[#0a0a0a] border-b border-gray-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -11,12 +29,15 @@ function Navbar() {
           <div className="flex items-center">
             <span className="text-xl font-bold text-white">Dashboard</span>
             <span className="ml-4 text-purple-500 flex items-center">
-              Hi,  <span className="ml-1 animate-wave">👋</span>
+              Hi, <span className="ml-1 animate-wave">👋</span>{userName?.trimEnd()}
             </span>
           </div>
 
           <div className="hidden md:flex items-center space-x-8">
-            <NavLink icon={<Home size={20} />} text="Home" active />
+            {/* Wrap Home link with Link component to navigate to /Company-dashboard */}
+            <Link to="/Company-dashboard">
+              <NavLink icon={<Home size={20} />} text="Home" active />
+            </Link>
             <NavLink icon={<Package size={20} />} text="Packages" />
             <NavLink icon={<Mic size={20} />} text="Interview Maker" />
             <NavLink icon={<UserCircle size={20} />} text="Profile" />
@@ -50,7 +71,7 @@ function NavLink({ icon, text, active = false }: { icon: React.ReactNode; text: 
   );
 }
 
-// CandidateDetailsPage Component with API integration, sorting, and filtering
+// CandidateDetailsPage Component with API integration, sorting, filtering, and custom status rendering
 interface CandidateRow {
   candidateId: string;
   jobId: number;
@@ -99,7 +120,7 @@ const CandidateDetailsPage = () => {
               candidateRows.push({
                 candidateId: candidate.candidateId,
                 jobId: job.job_id,
-                status: candidate.status, // You can map this number to a label if needed
+                status: candidate.status,
                 title: job.title || 'N/A',
                 postedOn: job.posted_on || 'N/A',
               });
@@ -139,16 +160,23 @@ const CandidateDetailsPage = () => {
     )
   );
 
-  // Map status to a color (customize as needed)
+  // Map status to a color and label (customize as needed)
   const getStatusColor = (status: number) => {
+    if (status === 5) return 'bg-red-500';
+    if (status === 10) return 'bg-green-500';
     const statusMap: Record<number, string> = {
-      5: 'bg-green-500',
       4: 'bg-yellow-500',
       3: 'bg-red-500',
       2: 'bg-blue-500',
       1: 'bg-gray-500'
     };
     return statusMap[status] || 'bg-gray-500';
+  };
+
+  const getStatusLabel = (status: number) => {
+    if (status === 5) return 'Reject';
+    if (status === 10) return 'Selected';
+    return status.toString();
   };
 
   return (
@@ -172,7 +200,15 @@ const CandidateDetailsPage = () => {
         </div>
 
         {isLoading ? (
-          <p>Loading candidate information...</p>
+          // Shadow loading animation for loading jobs
+          <div className="animate-pulse p-6">
+            <div className="h-6 bg-gray-700 rounded mb-4 w-1/3"></div>
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-4 bg-gray-700 rounded w-full"></div>
+              ))}
+            </div>
+          </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-purple-500 shadow-lg">
             <table className="min-w-full bg-[#1a1a1a] divide-y divide-gray-800">
@@ -217,7 +253,7 @@ const CandidateDetailsPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap">{candidate.jobId}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(candidate.status)} bg-opacity-20 border border-opacity-20`}>
-                          {candidate.status}
+                          {getStatusLabel(candidate.status)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">{candidate.title}</td>

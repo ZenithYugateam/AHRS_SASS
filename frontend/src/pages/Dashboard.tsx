@@ -67,6 +67,7 @@ interface SubscriptionPlan {
   tokens: number;
   interviews: number;
   duration?: string;
+  current?: boolean;
 }
 
 interface TokenPackage {
@@ -92,6 +93,15 @@ interface Job {
   location?: string;
   salary?: string;
   company_id: string;
+}
+
+// Define CandidateRow type for interview stats API response
+interface CandidateRow {
+  candidateId: string;
+  jobId: string;
+  status: number;
+  title: string;
+  postedOn: string;
 }
 
 // Default pricing data for token packages and additional plans
@@ -174,6 +184,11 @@ function Dashboard() {
   // The current plan, fetched from your subscription API
   const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
 
+  // New states for dynamic interview statistics
+  const [totalInterviews, setTotalInterviews] = useState<number>(0);
+  const [totalParticipants, setTotalParticipants] = useState<number>(0);
+  const [totalQualified, setTotalQualified] = useState<number>(0);
+
   // On mount, parse the "user" object from sessionStorage
   useEffect(() => {
     const userData = sessionStorage.getItem("user");
@@ -201,13 +216,10 @@ function Dashboard() {
         setIsLoading(false);
         return;
       }
-      // Call your subscription API
       const response = await axios.get(
         `https://ywl2agqqd3.execute-api.us-east-1.amazonaws.com/default/fechdetails?email=${sessionEmail}`
       );
       console.log("Subscription API Response:", response.data);
-
-      // Check if there's at least one subscription
       if (response.data && response.data.subscriptions && response.data.subscriptions.length > 0) {
         const sub = response.data.subscriptions[0];
         setCurrentPlan({
@@ -235,7 +247,6 @@ function Dashboard() {
       setIsLoading(false);
     }
   };
-
 
   const fetchCompanyJobs = async () => {
     try {
@@ -279,9 +290,38 @@ function Dashboard() {
     }
   };
 
+  // Fetch interview statistics from the candidate details API
+  const fetchInterviewStats = async () => {
+    try {
+      if (!sessionEmail) return;
+      const response = await axios.get(
+        `https://p103cwsao7.execute-api.us-east-1.amazonaws.com/default/get_total_interview?company_id=${sessionEmail}`
+      );
+      const jobsData = response.data.jobs || [];
+      const candidateRows: CandidateRow[] = [];
+      jobsData.forEach((job: any) => {
+        if (job.candidateList && Array.isArray(job.candidateList)) {
+          job.candidateList.forEach((candidate: any) => {
+            candidateRows.push({
+              candidateId: candidate.candidateId,
+              jobId: job.job_id,
+              status: candidate.status,
+              title: job.job_title || 'N/A',
+              postedOn: job.posted_on || 'N/A',
+            });
+          });
+        }
+      });
+      setTotalInterviews(jobsData.length);
+      setTotalParticipants(candidateRows.length);
+      setTotalQualified(candidateRows.filter(candidate => candidate.status === 10).length);
+    } catch (error) {
+      console.error("Error fetching interview stats:", error);
+    }
+  };
+
   // Transform the pricing API response to match the PricingData structure
   const transformApiResponse = (apiData: any): PricingData => {
-    // Single subscription object
     if (apiData && !Array.isArray(apiData) && apiData.id && apiData.name) {
       const plan: SubscriptionPlan = {
         id: apiData.id || 'subscription',
@@ -314,7 +354,6 @@ function Dashboard() {
       };
     }
     
-    // Array of subscriptions
     if (Array.isArray(apiData)) {
       const plans: SubscriptionPlan[] = apiData.map((item, index) => ({
         id: item.id || `plan-${index}`,
@@ -346,18 +385,15 @@ function Dashboard() {
         tokenPackages
       };
     }
-
-    // Fallback
     return defaultPricingData;
   };
 
   // On mount or when sessionEmail changes, fetch data
   useEffect(() => {
-    // If we have an email, fetch subscription
     if (sessionEmail) {
       fetchUserSubscription();
+      fetchInterviewStats();
     }
-    // Always fetch jobs and pricing
     fetchCompanyJobs();
     fetchPricingData();
   }, [sessionEmail]);
@@ -406,12 +442,10 @@ function Dashboard() {
   const handlePaymentSuccess = () => {
     if (paymentType === 'token' && selectedPackage) {
       console.log(`Added ${selectedPackage.tokens} tokens to user account`);
-      // Update currentPlan tokens automatically
       setCurrentPlan(prevPlan => {
         if (prevPlan) {
           return { ...prevPlan, tokens: prevPlan.tokens + selectedPackage.tokens };
         } else {
-          // If no subscription exists, create a minimal one with the purchased tokens
           return {
             id: "token-purchase",
             name: "Token Purchase",
@@ -426,7 +460,6 @@ function Dashboard() {
       });
     } else if (paymentType === 'plan' && selectedPlan) {
       console.log(`Updated subscription to ${selectedPlan.name} plan`);
-      // Mark that plan as current in your local pricing data
       const updatedPlans = pricingData.plans.map(plan => ({
         ...plan,
         current: plan.id === selectedPlan.id
@@ -437,15 +470,13 @@ function Dashboard() {
       });
       setCurrentPlan(selectedPlan);
     }
-
-    // Show a payment success message
     setPaymentSuccess(true);
     setTimeout(() => {
       setPaymentSuccess(false);
     }, 5000);
   };
 
-  // Usage stats
+  // Usage stats (example values)
   const tokensUsed = 0;
   const tokensRemaining = currentPlan ? currentPlan.tokens - tokensUsed : 0;
   const tokensPercentage = currentPlan && currentPlan.tokens > 0
@@ -470,41 +501,35 @@ function Dashboard() {
 
       {/* Payment Modal */}
       <PaymentModal 
-
-  isOpen={paymentModalOpen}
-  onClose={() => setPaymentModalOpen(false)}
-  amount={selectedPackage ? selectedPackage.price : selectedPlan ? selectedPlan.price : 0}
-  description={
-    selectedPackage
-      ? `Purchase ${selectedPackage.name} (${selectedPackage.tokens} tokens)`
-      : selectedPlan
-      ? `Subscribe to ${selectedPlan.name} Plan`
-      : ''
-  }
-  onSuccess={handlePaymentSuccess}
-  tokensPurchased={selectedPackage ? selectedPackage.tokens : undefined}
-  tokensLeft={selectedPackage ? selectedPackage.tokens : undefined} // ✅ Added tokensLeft
-  subscriptionType={selectedPlan ? selectedPlan.name : undefined}
-  email={userEmail || ""}
-/>
-
-
+        isOpen={paymentModalOpen}
+        onClose={() => setPaymentModalOpen(false)}
+        amount={selectedPackage ? selectedPackage.price : selectedPlan ? selectedPlan.price : 0}
+        description={
+          selectedPackage
+            ? `Purchase ${selectedPackage.name} (${selectedPackage.tokens} tokens)`
+            : selectedPlan
+            ? `Subscribe to ${selectedPlan.name} Plan`
+            : ''
+        }
+        onSuccess={handlePaymentSuccess}
+        tokensPurchased={selectedPackage ? selectedPackage.tokens : undefined}
+        tokensLeft={selectedPackage ? selectedPackage.tokens : undefined}
+        subscriptionType={selectedPlan ? selectedPlan.name : undefined}
+        email={userEmail || ""}
+      />
 
       {/* Header */}
       <header className="flex items-center justify-between p-4 border-b border-gray-800">
         <div className="flex items-center space-x-2">
           <h1 className="text-2xl font-bold">Dashboard</h1>
         </div>
-        {/* Display the user's name */}
         <div className="text-lg font-medium">
           {userName ? `Hi, ${userName} 👋` : "Hi, User! 👋"}
         </div>
         <nav className="hidden md:flex items-center space-x-6">
           <a
             href="#"
-            className={`flex items-center space-x-2 ${
-              currentPage === 'home' ? 'text-purple-400' : 'hover:text-purple-400'
-            }`}
+            className={`flex items-center space-x-2 ${currentPage === 'home' ? 'text-purple-400' : 'hover:text-purple-400'}`}
             onClick={() => navigateTo('home')}
           >
             <Home size={20} />
@@ -555,7 +580,6 @@ function Dashboard() {
             {currentPage === 'home' && (
               <>
                 {/* Button to post a new job */}
-
                 <div className="flex justify-end mb-8">
                   <button
                     onClick={() => navigate('/post-job')}
@@ -565,16 +589,17 @@ function Dashboard() {
                   </button>
                 </div>
 
-
-                {/* Stats Cards */}
+                {/* Stats Cards with dynamic metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   <div className="bg-purple-600 rounded-lg p-6">
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-lg mb-2">Total Interviews</p>
-                        <h3 className="text-5xl font-bold mb-2">10</h3>
-                        <p className="text-sm mb-4">10 Applications</p>
-                        <button className="text-white hover:underline">View Details</button>
+                        <h3 className="text-5xl font-bold mb-2">{totalInterviews}</h3>
+                        <p className="text-sm mb-4">{totalInterviews} Applications</p>
+                        <button className="text-white hover:underline" onClick={() => navigate("/total-interview")}>
+                          View Details
+                        </button>
                       </div>
                       <BarChart3 size={24} />
                     </div>
@@ -583,8 +608,8 @@ function Dashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-lg mb-2">Total Participants</p>
-                        <h3 className="text-5xl font-bold mb-2">10</h3>
-                        <p className="text-sm mb-4">10 Applications</p>
+                        <h3 className="text-5xl font-bold mb-2">{totalParticipants}</h3>
+                        <p className="text-sm mb-4">{totalParticipants} Applications</p>
                         <button className="text-white hover:underline">View Details</button>
                       </div>
                       <Users size={24} />
@@ -594,8 +619,8 @@ function Dashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-lg mb-2">Total Qualified</p>
-                        <h3 className="text-5xl font-bold mb-2">4</h3>
-                        <p className="text-sm mb-4">10 Applications</p>
+                        <h3 className="text-5xl font-bold mb-2">{totalQualified}</h3>
+                        <p className="text-sm mb-4">{totalQualified} Applications</p>
                         <button className="text-white hover:underline">View Details</button>
                       </div>
                       <Target size={24} />
@@ -795,8 +820,7 @@ function Dashboard() {
 
             {currentPage === 'interview-maker' && (
               <div className="min-h-screen bg-gray-900 text-white p-8">
-
-                 <div className="flex justify-end mb-8">
+                <div className="flex justify-end mb-8">
                   <button
                     onClick={() => navigate('/post-job')}
                     className="flex items-center gap-2 px-4 py-2 bg-[#1A1528] text-white border border-gray-700 rounded-lg hover:bg-[#2A2538] transition-colors"
@@ -815,12 +839,10 @@ function Dashboard() {
                         >
                           <div className="flex items-center mb-4">
                             <Briefcase className="mr-2" />
-
-                            <h2 className="text-xl font-bold">{job.title}</h2>
+                            <h2 className="text-xl font-bold">{job.job_title}</h2>
                           </div>
                           <p className="text-gray-300 mb-4 line-clamp-3">
-                            {job.description || "No description available."}
-
+                            {job.job_description || "No description available."}
                           </p>
                           <div className="flex flex-wrap gap-2 mb-4">
                             {job.experience && (
@@ -964,6 +986,5 @@ function Dashboard() {
     </div>
   );
 }
-
 
 export default Dashboard;
