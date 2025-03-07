@@ -580,14 +580,7 @@ function Dashboard() {
             {currentPage === 'home' && (
               <>
                 {/* Button to post a new job */}
-                <div className="flex justify-end mb-8">
-                  <button
-                    onClick={() => navigate('/post-job')}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#1A1528] text-white border border-gray-700 rounded-lg hover:bg-[#2A2538] transition-colors"
-                  >
-                    <PlusCircle size={20} /> Post New Job
-                  </button>
-                </div>
+               
 
                 {/* Stats Cards with dynamic metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
