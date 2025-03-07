@@ -56,7 +56,7 @@ function PostJob() {
       if (response.ok) {
         alert('Job posted successfully!');
         // Redirect to the interview maker stepper view
-        navigate('/interview-maker');
+        navigate('/Company-dashboard');
       } else {
         alert('Error posting job');
       }
