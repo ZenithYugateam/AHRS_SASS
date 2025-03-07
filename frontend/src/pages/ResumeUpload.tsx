@@ -12,7 +12,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
 function ResumeUpload() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { job, email } = location.state || {};
+  const { job, email , description,title } = location.state || {};
 
   // Optionally check for job data here
   if (!job) {
@@ -105,7 +105,7 @@ function ResumeUpload() {
 
     try {
       const resumeText = await extractTextFromPDF(resume);
-      const percentage = await analyzeResumeWithAI(resumeText, job.job_description || '');
+      const percentage = await analyzeResumeWithAI(resumeText, job.description || '');
       setMatchPercentage(percentage);
 
       if (percentage < 30) {
@@ -157,7 +157,7 @@ function ResumeUpload() {
         transition={{ duration: 1 }}
         className="text-4xl font-extrabold text-white mb-8 drop-shadow-lg"
       >
-        Upload Your Resume for <span className="text-blue-400">{job.job_title}</span>
+        Upload Your Resume for <span className="text-blue-400">{job.title}</span>
       </motion.h1>
 
       {loading ? (
