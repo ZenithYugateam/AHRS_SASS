@@ -75,7 +75,7 @@ interface TokenPackage {
   name: string;
   tokens: number;
   price: number;
-  : string;
+  description: string;
   popular?: boolean;
 }
 
