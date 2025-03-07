@@ -5,6 +5,16 @@ import { motion } from 'framer-motion';
 import ContentLoader from 'react-content-loader';
 import { ChevronDown, User } from 'lucide-react';
 
+interface Job {
+  job_id: string;
+  title: string;
+  description?: string;
+  experience?: string;
+  location?: string;
+  salary?: string;
+  company_id: string;
+}
+
 function CandidateHome() {
   const [jobData, setJobData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,7 +22,7 @@ function CandidateHome() {
   const [username, setUsername] = useState("User"); // Default value
   const [isJobsDropdownOpen, setIsJobsDropdownOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const scrollRef = useRef(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
 
   // Retrieve username from session storage
@@ -45,7 +55,7 @@ function CandidateHome() {
         } else {
           setError("No job data found");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Fetch error:", err);
         if (err.code === "ECONNABORTED") {
           setError("Request timed out. Please try again later.");
@@ -73,13 +83,15 @@ function CandidateHome() {
   };
 
   // When a job card is clicked, store the job and navigate
-  const handleJobClick = (job) => {
+  const handleJobClick = (job: Job) => {
     console.log("Selected job:", job);
     localStorage.setItem("selectedJob", JSON.stringify(job));
-    const getuserData = sessionStorage.getItem('user');
-    const email = JSON.parse(getuserData).email;
-    console.log("email ***** ", email)
-    navigate('/upload-resume', { state: { job , email } });
+    const getuserData = sessionStorage.getItem("user");
+    if (getuserData) {
+      const email = JSON.parse(getuserData).email;
+      console.log("email ***** ", email);
+      navigate("/upload-resume", { state: { job, email } });
+    }
   };
 
   const handleLogout = () => {
@@ -88,24 +100,23 @@ function CandidateHome() {
   };
 
   const toggleJobsDropdown = () => {
-    setIsJobsDropdownOpen(prev => !prev);
+    setIsJobsDropdownOpen((prev) => !prev);
   };
 
   const toggleProfileDropdown = () => {
-    setIsProfileDropdownOpen(prev => !prev);
+    setIsProfileDropdownOpen((prev) => !prev);
   };
 
   // Navigate to Applied Jobs page from dropdown
   const goToAppliedJobs = () => {
     setIsJobsDropdownOpen(false);
-    navigate('/applied-jobs');
-  };
-  
-  const goTooffers = () => {
-    setIsJobsDropdownOpen(false);
-    navigate('/offers');
+    navigate("/applied-jobs");
   };
 
+  const goTooffers = () => {
+    setIsJobsDropdownOpen(false);
+    navigate("/offers");
+  };
 
   return (
     <div className="min-h-screen bg-[#0F0B1E] relative">
@@ -229,7 +240,7 @@ function CandidateHome() {
                 className="flex overflow-x-scroll scrollbar-hide gap-5 w-full h-fit"
                 ref={scrollRef}
               >
-                {jobData.map((job, index) => (
+                {jobData.map((job: any, index: number) => (
                   <motion.div
                     key={index}
                     onClick={() => handleJobClick(job)}
@@ -250,10 +261,15 @@ function CandidateHome() {
                           {new Date(job.posted_on || job.job_posted).toDateString()}
                         </p>
                       </div>
-                      <div className={`px-5 py-1 rounded-full text-center h-fit text-[8px] lg:text-[10px] ${job.approval ? "bg-green-500" : "bg-yellow-500"}`}>
+                      <div
+                        className={`px-5 py-1 rounded-full text-center h-fit text-[8px] lg:text-[10px] ${
+                          job.approval ? "bg-green-500" : "bg-yellow-500"
+                        }`}
+                      >
                         {job.approval ? "Eligible" : "Pending"}
                       </div>
                     </div>
+
                     <div className="grid w-full grid-cols-2 gap-5 m-2 lg:m-3">
                       <div className="text-[12px] lg:text-[16px] text-white">
                         <h4>Experience</h4>
@@ -267,12 +283,33 @@ function CandidateHome() {
                         <h4>Salary</h4>
                         <p>{job.salary || job.data?.salary || "N/A"}</p>
                       </div>
+                      
+                      {/* 
+                        JOB DESCRIPTION SECTION 
+                        Truncate by default, show a tooltip with the full description on hover.
+                      */}
                       <div className="text-[12px] lg:text-[16px] text-white">
                         <h4>Job Description</h4>
-                        <p>{job.description || "No description available"}</p>
+                        <div className="relative group">
+                          {/* Truncated text */}
+                          <p
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 3,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {job.description || "No description available"}
+                          </p>
+
+                          {/* Tooltip with full description on hover */}
+                          <div className="absolute top-full left-0 mt-1 w-[300px] bg-[#1A1528] text-white text-sm p-2 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            {job.description || "No description available"}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    {/* "Apply" button removed */}
                   </motion.div>
                 ))}
               </div>
