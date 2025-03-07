@@ -75,7 +75,7 @@ interface TokenPackage {
   name: string;
   tokens: number;
   price: number;
-  description: string;
+  : string;
   popular?: boolean;
 }
 
@@ -842,7 +842,7 @@ function Dashboard() {
                             <h2 className="text-xl font-bold">{job.job_title}</h2>
                           </div>
                           <p className="text-gray-300 mb-4 line-clamp-3">
-                            {job.job_description || "No description available."}
+                            {job.description || "No description available."}
                           </p>
                           <div className="flex flex-wrap gap-2 mb-4">
                             {job.experience && (
@@ -867,7 +867,7 @@ function Dashboard() {
                             onClick={() => handleApply(job)}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition-colors"
                           >
-                            APPLY NOW
+                            SET INTERVIEW
                           </button>
                         </div>
                       ))
