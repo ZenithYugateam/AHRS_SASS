@@ -9,12 +9,20 @@ import {
   TrendingUp
 } from 'lucide-react';
 
+import { useNavigate } from 'react-router-dom';
+
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+  const navigate = useNavigate();
+  
+  const handleLogout = () => {
+    sessionStorage.clear();
+    navigate('/');
+  };
   return (
     <div className="w-64 bg-gray-800 p-4">
       <div className="flex items-center mb-8">
@@ -82,7 +90,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
       </nav>
       
       <div className="absolute bottom-4 left-4 right-4">
-        <button className="flex items-center w-full p-2 text-left hover:bg-gray-700 rounded">
+        <button className="flex items-center w-full p-2 text-left hover:bg-gray-700 rounded"
+          onClick={handleLogout}
+          >
           <LogOut className="h-5 w-5 mr-3" />
           Logout
         </button>
