@@ -52,7 +52,10 @@ function InterviewScreen() {
   if (!job) return null;
 
   // Retrieve candidate email from local storage (login session).
-  const candidateEmail = localStorage.getItem("candidateEmail") || "codeprabhas11@gmail.com";
+  const candidateEmail =  sessionStorage.getItem("user") || " no candiaite id";
+  const email = JSON.parse(candidateEmail).email;
+  console.log(email)
+    
 
   // State variables.
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -69,7 +72,7 @@ function InterviewScreen() {
   const [isInterviewStarted, setIsInterviewStarted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   // Use candidate email as candidateId.
-  const [candidateId] = useState<string>(candidateEmail);
+  const [candidateId] = useState<string>(email);
   const [isPaused, setIsPaused] = useState(false);
   const [pauseMessage, setPauseMessage] = useState("");
   const [submissionLoading, setSubmissionLoading] = useState(false);
@@ -498,7 +501,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
   };
 
   const submitInterview = async () => {
-    if (!candidateId || responses.length === 0) {
+    if (!email || responses.length === 0) {
       alert("Candidate ID or responses are missing. Please complete the interview before submitting.");
       return;
     }
