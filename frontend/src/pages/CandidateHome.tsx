@@ -13,32 +13,39 @@ interface Job {
   location?: string;
   salary?: string;
   company_id: string;
+  posted_on?: string;
+  job_posted?: string;
+  approval?: boolean;
 }
 
 function CandidateHome() {
-  const [jobData, setJobData] = useState([]);
+  const [jobData, setJobData] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [username, setUsername] = useState("User"); // Default value
+  const [username, setUsername] = useState("User");
+  const [jobPreferences, setJobPreferences] = useState<string[]>([]);
   const [isJobsDropdownOpen, setIsJobsDropdownOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
 
-  // Retrieve username from session storage
+  // Retrieve username and job preferences from session storage
   useEffect(() => {
     const storedUserData = sessionStorage.getItem("user");
     if (storedUserData) {
       try {
         const userData = JSON.parse(storedUserData);
-        setUsername(userData?.username);
-      } catch (error) {
-        console.error("Error parsing session storage data:", error);
+        setUsername(userData?.username || "User");
+        if (userData?.jobPreferences) {
+          setJobPreferences(userData.jobPreferences);
+        }
+      } catch (err) {
+        console.error("Error parsing session storage data:", err);
       }
     }
   }, []);
 
-  // Fetch available jobs from your API
+  // Fetch job data from API
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -70,6 +77,19 @@ function CandidateHome() {
     fetchData();
   }, []);
 
+  // Filter jobs based on user's saved job preference tags (case-insensitive)
+  const preferenceJobs = jobData.filter((job) => {
+    if (!jobPreferences || jobPreferences.length === 0) return false;
+    return jobPreferences.some((pref) => {
+      const lowerPref = pref.toLowerCase();
+      return (
+        job.title?.toLowerCase().includes(lowerPref) ||
+        job.description?.toLowerCase().includes(lowerPref)
+      );
+    });
+  });
+
+  // Horizontal scroll logic
   const scrollLeft = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollBy({ left: -450, behavior: "smooth" });
@@ -82,44 +102,107 @@ function CandidateHome() {
     }
   };
 
-  // When a job card is clicked, store the job and navigate
+  // Renders a single job card
+  const renderJobCard = (job: Job, index: number) => (
+    <motion.div
+      key={index}
+      onClick={() => handleJobClick(job)}
+      // flex-none ensures each card doesn't shrink, 
+      // so total width is just sum of all cards.
+      className="flex-none lg:w-[443px] lg:h-[251px] w-[343px] h-[151px] 
+                 px-5 lg:px-10 py-5 bg-gradient-to-r from-[#F700FC] to-[#2941B9] 
+                 rounded-lg flex flex-col justify-between shadow-lg 
+                 hover:shadow-xl transition-shadow"
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.1 }}
+    >
+      <div className="flex justify-between">
+        <div className="text-white">
+          <h3 className="text-[18px] lg:text-[20px] font-semibold">{job.title}</h3>
+          <p className="text-[10px] lg:text-[12px] font-thin">{job.company_id}</p>
+          <p className="text-[8px] lg:text-[10px] font-thin">
+            {new Date(job.posted_on || job.job_posted || Date.now()).toDateString()}
+          </p>
+        </div>
+        <div
+          className={`px-5 py-1 rounded-full text-center h-fit text-[8px] lg:text-[10px] 
+                      ${job.approval ? "bg-green-500" : "bg-yellow-500"}`}
+        >
+          {job.approval ? "Eligible" : "Pending"}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-5 mt-2">
+        <div className="text-[12px] lg:text-[16px] text-white">
+          <h4>Experience</h4>
+          <p>{job.experience || "N/A"}</p>
+        </div>
+        <div className="text-[12px] lg:text-[16px] text-white">
+          <h4>Location</h4>
+          <p>{job.location || "N/A"}</p>
+        </div>
+        <div className="text-[12px] lg:text-[16px] text-white">
+          <h4>Salary</h4>
+          <p>{job.salary || "N/A"}</p>
+        </div>
+        <div className="text-[12px] lg:text-[16px] text-white">
+          <h4>Job Description</h4>
+          <div className="relative group">
+            <p
+              style={{
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {job.description || "No description available"}
+            </p>
+            <div
+              className="absolute top-full left-0 mt-1 w-[300px] bg-[#1A1528] 
+                         text-white text-sm p-2 rounded-md shadow-lg opacity-0 
+                         group-hover:opacity-100 transition-opacity z-10"
+            >
+              {job.description || "No description available"}
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  // Handles job card click
   const handleJobClick = (job: Job) => {
-    console.log("Selected job:", job);
     localStorage.setItem("selectedJob", JSON.stringify(job));
-    const getuserData = sessionStorage.getItem("user");
-    if (getuserData) {
-      const email = JSON.parse(getuserData).email;
-      console.log("email ***** ", email);
+    const storedUserData = sessionStorage.getItem("user");
+    if (storedUserData) {
+      const email = JSON.parse(storedUserData).email;
       navigate("/upload-resume", { state: { job, email } });
     }
   };
 
+  // Logout
   const handleLogout = () => {
     sessionStorage.removeItem("user");
     navigate("/");
   };
 
-  const toggleJobsDropdown = () => {
-    setIsJobsDropdownOpen((prev) => !prev);
-  };
+  // Dropdown toggles
+  const toggleJobsDropdown = () => setIsJobsDropdownOpen((prev) => !prev);
+  const toggleProfileDropdown = () => setIsProfileDropdownOpen((prev) => !prev);
 
-  const toggleProfileDropdown = () => {
-    setIsProfileDropdownOpen((prev) => !prev);
-  };
-
-  // Navigate to Applied Jobs page from dropdown
   const goToAppliedJobs = () => {
     setIsJobsDropdownOpen(false);
     navigate("/applied-jobs");
   };
 
-  const goTooffers = () => {
+  const goToOffers = () => {
     setIsJobsDropdownOpen(false);
     navigate("/offers");
   };
 
   return (
-    <div className="min-h-screen bg-[#0F0B1E] relative">
+    <div className="min-h-screen bg-[#0F0B1E]">
       {/* Navigation Bar */}
       <nav className="bg-[#1A1528] py-4 px-6 shadow-md">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -130,7 +213,7 @@ function CandidateHome() {
             </a>
             {/* Jobs Dropdown */}
             <div className="relative">
-              <button 
+              <button
                 className="text-white hover:text-gray-300 transition-colors flex items-center"
                 onClick={toggleJobsDropdown}
               >
@@ -138,26 +221,24 @@ function CandidateHome() {
               </button>
               {isJobsDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-[#1A1528] rounded-md shadow-lg py-1 z-10">
-                  <a
-                    href="#"
+                  <button
                     onClick={goToAppliedJobs}
-                    className="block px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
+                    className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
                   >
                     Applied Jobs
-                  </a>
-                  <a 
-                    href="#"
-                    onClick={goTooffers}
-                    className="block px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
+                  </button>
+                  <button
+                    onClick={goToOffers}
+                    className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
                   >
                     Offers
-                  </a>
+                  </button>
                 </div>
               )}
             </div>
             {/* Profile Dropdown */}
             <div className="relative">
-              <button 
+              <button
                 className="flex items-center space-x-2"
                 onClick={toggleProfileDropdown}
               >
@@ -170,19 +251,21 @@ function CandidateHome() {
               </button>
               {isProfileDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-[#1A1528] rounded-md shadow-lg py-1 z-10">
-                  <a 
-                    href="#" 
-                    className="block px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
+                  <button
+                    onClick={() => {
+                      navigate("/profile");
+                      setIsProfileDropdownOpen(false);
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
                   >
                     Profile
-                  </a>
-                  <a 
-                    href="#" 
-                    className="block px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
+                  </button>
+                  <button
+                    className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
                   >
                     Settings
-                  </a>
-                  <button 
+                  </button>
+                  <button
                     onClick={handleLogout}
                     className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
                   >
@@ -195,6 +278,7 @@ function CandidateHome() {
         </div>
       </nav>
 
+      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header Section */}
         <header className="mb-8">
@@ -204,130 +288,69 @@ function CandidateHome() {
           </p>
         </header>
 
-        {/* Job Listings Header */}
-        <div className="mb-4">
-          <h3 className="text-2xl font-semibold text-white">Job Listings</h3>
-        </div>
+        {/* Preferred Jobs Section */}
+        {jobPreferences.length > 0 && preferenceJobs.length > 0 && (
+          <section className="mb-8">
+            <h3 className="text-2xl font-semibold text-white mb-4">
+              Jobs Matching Your Preferences
+            </h3>
+            <div className="overflow-x-auto scrollbar-hide flex gap-5" 
+                 style={{ scrollBehavior: 'smooth' }}>
+              {preferenceJobs.map((job, index) => renderJobCard(job, index))}
+            </div>
+          </section>
+        )}
 
-        {/* Jobs Section */}
-        <div className="relative overflow-hidden">
-          <div className="relative overflow-hidden pr-5">
-            {loading ? (
-              <div className="flex gap-5 overflow-hidden">
-                {[...Array(3)].map((_, index) => (
-                  <ContentLoader
-                    key={index}
-                    speed={2}
-                    width={450}
-                    height={200}
-                    viewBox="0 0 450 200"
-                    backgroundColor="#1E1A2B"
-                    foregroundColor="#2E2840"
-                    className="rounded-lg"
-                  >
-                    <rect x="10" y="10" rx="8" ry="8" width="420" height="25" />
-                    <rect x="10" y="50" rx="6" ry="6" width="200" height="15" />
-                    <rect x="10" y="80" rx="6" ry="6" width="250" height="15" />
-                    <rect x="10" y="120" rx="6" ry="6" width="180" height="15" />
-                    <rect x="10" y="160" rx="6" ry="6" width="140" height="15" />
-                  </ContentLoader>
-                ))}
-              </div>
-            ) : error ? (
-              <p className="text-red-500">{error}</p>
-            ) : (
-              <div
-                className="flex overflow-x-scroll scrollbar-hide gap-5 w-full h-fit"
-                ref={scrollRef}
-              >
-                {jobData.map((job: any, index: number) => (
-                  <motion.div
-                    key={index}
-                    onClick={() => handleJobClick(job)}
-                    className="cursor-pointer lg:min-w-[443px] lg:min-h-[251px] min-w-[343px] min-h-[151px] px-5 lg:px-10 py-5 bg-gradient-to-r from-[#F700FC] to-[#2941B9] rounded-lg flex flex-col justify-between shadow-lg hover:shadow-xl transition-shadow"
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                  >
-                    <div className="w-full flex justify-between">
-                      <div className="text-white">
-                        <h3 className="text-[18px] lg:text-[20px] font-semibold">
-                          {job.title || job.data?.title || job.title}
-                        </h3>
-                        <p className="text-[10px] lg:text-[12px] font-thin">
-                          {job.company_id}
-                        </p>
-                        <p className="text-[8px] lg:text-[10px] font-thin">
-                          {new Date(job.posted_on || job.job_posted).toDateString()}
-                        </p>
-                      </div>
-                      <div
-                        className={`px-5 py-1 rounded-full text-center h-fit text-[8px] lg:text-[10px] ${
-                          job.approval ? "bg-green-500" : "bg-yellow-500"
-                        }`}
-                      >
-                        {job.approval ? "Eligible" : "Pending"}
-                      </div>
-                    </div>
-
-                    <div className="grid w-full grid-cols-2 gap-5 m-2 lg:m-3">
-                      <div className="text-[12px] lg:text-[16px] text-white">
-                        <h4>Experience</h4>
-                        <p>{job.experience || "N/A"}</p>
-                      </div>
-                      <div className="text-[12px] lg:text-[16px] text-white">
-                        <h4>Location</h4>
-                        <p>{job.location || job.data?.location}</p>
-                      </div>
-                      <div className="text-[12px] lg:text-[16px] text-white">
-                        <h4>Salary</h4>
-                        <p>{job.salary || job.data?.salary || "N/A"}</p>
-                      </div>
-                      
-                      {/* 
-                        JOB DESCRIPTION SECTION 
-                        Truncate by default, show a tooltip with the full description on hover.
-                      */}
-                      <div className="text-[12px] lg:text-[16px] text-white">
-                        <h4>Job Description</h4>
-                        <div className="relative group">
-                          {/* Truncated text */}
-                          <p
-                            style={{
-                              display: '-webkit-box',
-                              WebkitLineClamp: 3,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {job.description || "No description available"}
-                          </p>
-
-                          {/* Tooltip with full description on hover */}
-                          <div className="absolute top-full left-0 mt-1 w-[300px] bg-[#1A1528] text-white text-sm p-2 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                            {job.description || "No description available"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Job Listings Section */}
+        <section>
+          <h3 className="text-2xl font-semibold text-white mb-4">Job Listings</h3>
+          {loading ? (
+            <div className="flex gap-5">
+              {[...Array(3)].map((_, index) => (
+                <ContentLoader
+                  key={index}
+                  speed={2}
+                  width={450}
+                  height={200}
+                  viewBox="0 0 450 200"
+                  backgroundColor="#1E1A2B"
+                  foregroundColor="#2E2840"
+                  className="rounded-lg"
+                >
+                  <rect x="10" y="10" rx="8" ry="8" width="420" height="25" />
+                  <rect x="10" y="50" rx="6" ry="6" width="200" height="15" />
+                  <rect x="10" y="80" rx="6" ry="6" width="250" height="15" />
+                  <rect x="10" y="120" rx="6" ry="6" width="180" height="15" />
+                  <rect x="10" y="160" rx="6" ry="6" width="140" height="15" />
+                </ContentLoader>
+              ))}
+            </div>
+          ) : error ? (
+            <p className="text-red-500">{error}</p>
+          ) : (
+            <div 
+              className="overflow-x-auto scrollbar-hide flex gap-5" 
+              style={{ scrollBehavior: 'smooth' }}
+              ref={scrollRef}
+            >
+              {jobData.map((job, index) => renderJobCard(job, index))}
+            </div>
+          )}
+        </section>
 
         {/* Scroll Buttons */}
         <div className="flex w-full justify-between my-5">
           <button
             onClick={scrollLeft}
-            className="p-3 rounded-full bg-[#1A1528] hover:bg-[#2A2538] transition-transform transform hover:scale-110"
+            className="p-3 rounded-full bg-[#1A1528] hover:bg-[#2A2538] 
+                       transition-transform transform hover:scale-110"
           >
             ◀
           </button>
           <button
             onClick={scrollRight}
-            className="p-3 rounded-full bg-[#1A1528] hover:bg-[#2A2538] transition-transform transform hover:scale-110"
+            className="p-3 rounded-full bg-[#1A1528] hover:bg-[#2A2538] 
+                       transition-transform transform hover:scale-110"
           >
             ▶
           </button>
