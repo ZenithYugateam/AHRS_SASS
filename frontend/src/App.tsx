@@ -15,7 +15,8 @@ import Offers from './pages/Offers';
 import CandidateDetailsPage from './pages/CandidateDetailsPage';
 import Profile from './pages/UserProfile';
 import { ToastContainer } from 'react-toastify';
-
+//
+import CandidateAnalysisPage from './pages/CandidateAnalysisPage';
 
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
         <Route path="/interview-maker" element={<InterviewMaker />} />
         <Route path="/total-interview" element={<CandidateDetailsPage/>}/>;
         <Route path="/profile" element={<Profile/>}/>;
+        <Route path="/analysis/:candidateId" element={<CandidateAnalysisPage />} />
       </Routes>
     </Router>
   </>
