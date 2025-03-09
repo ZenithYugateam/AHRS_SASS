@@ -530,10 +530,10 @@ function Dashboard() {
       <header className="flex items-center justify-between p-4 border-b border-gray-800">
   <div className="flex items-center space-x-2">
     <Zap size={24} className="text-purple-400" /> {/* Icon added here */}
-    <h1 className="text-2xl font-bold">Dashboard</h1>
+    <h1 className="text-2xl font-bold">Interview 24/7</h1>
   </div>
   <div className="text-lg font-medium">
-    {userName ? `Hi, ${userName} 👋` : "Hi, User! 👋"}
+    {userEmail ? `Hi, ${userEmail.split('@')[0]} 👋` : "Hi, User! 👋"}
   </div>
   <nav className="hidden md:flex items-center space-x-6">
     <a
