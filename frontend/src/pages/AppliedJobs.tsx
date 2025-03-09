@@ -188,9 +188,9 @@ function AppliedJobs() {
                       {!job.resumeUploaded && (
                         <button
                           className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                          onClick={() => navigate('/upload-resume', { state: { job } })}
+                          onClick={() => navigate('/interview', { state: { job } })}
                         >
-                          Upload Your Resume
+                          Start Interview
                         </button>
                       )}
                       {/* If resume is uploaded and status is still pending, allow Start Resume */}
