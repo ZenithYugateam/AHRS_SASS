@@ -13,9 +13,13 @@ import InterviewMaker from './pages/InterviewMaker';
 import AppliedJobs from './pages/AppliedJobs';
 import Offers from './pages/Offers';
 import CandidateDetailsPage from './pages/CandidateDetailsPage';
+<<<<<<< Updated upstream
 import Profile from './pages/UserProfile';
 import { ToastContainer } from 'react-toastify';
 
+=======
+import CandidateAnalysisPage from './pages/CandidateAnalysisPage';
+>>>>>>> Stashed changes
 
 
 function App() {
@@ -37,7 +41,11 @@ function App() {
         <Route path="/Company-dashboard" element={<Dashboard />} />
         <Route path="/interview-maker" element={<InterviewMaker />} />
         <Route path="/total-interview" element={<CandidateDetailsPage/>}/>;
+<<<<<<< Updated upstream
         <Route path="/profile" element={<Profile/>}/>;
+=======
+        <Route path="/analysis/:candidateId" element={<CandidateAnalysisPage />} />
+>>>>>>> Stashed changes
       </Routes>
     </Router>
   </>

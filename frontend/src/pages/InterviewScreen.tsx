@@ -51,17 +51,32 @@ function InterviewScreen() {
 
   if (!job) return null;
 
+<<<<<<< Updated upstream
   // Retrieve candidate email from local storage (login session).
   const candidateEmail =  sessionStorage.getItem("user") || " no candiaite id";
   const email = JSON.parse(candidateEmail).email;
   console.log(email)
     
+=======
+  // Retrieve candidate email from session storage (login session).
+  let candidateEmail = "";
+  const storedUser = sessionStorage.getItem("user");
+  if (storedUser) {
+    try {
+      candidateEmail = JSON.parse(storedUser).email;
+    } catch (e) {
+      candidateEmail = storedUser;
+    }
+  } else {
+    candidateEmail = "unknown@candidate.com";
+  }
+  console.log("Candidate Email:", candidateEmail);
+>>>>>>> Stashed changes
 
   // State variables.
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  // API sends total_time in minutes; convert to seconds.
-  const [totalTime, setTotalTime] = useState(0);
+  const [totalTime, setTotalTime] = useState(0); // API sends total_time in minutes; convert to seconds.
   const [timeLeft, setTimeLeft] = useState(0);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [answer, setAnswer] = useState("");
@@ -71,19 +86,23 @@ function InterviewScreen() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isInterviewStarted, setIsInterviewStarted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+<<<<<<< Updated upstream
   // Use candidate email as candidateId.
   const [candidateId] = useState<string>(email);
+=======
+  const [candidateId] = useState<string>(candidateEmail);
+>>>>>>> Stashed changes
   const [isPaused, setIsPaused] = useState(false);
   const [pauseMessage, setPauseMessage] = useState("");
   const [submissionLoading, setSubmissionLoading] = useState(false);
   const [dynamicCount, setDynamicCount] = useState(0);
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [maleVoice, setMaleVoice] = useState<SpeechSynthesisVoice | null>(null);
-  // Warning count for copy/tab violations.
   const [warningCount, setWarningCount] = useState(0);
-  // New state to disable the Next button during processing.
+  // New state to disable Next button during API call.
   const [nextProcessing, setNextProcessing] = useState(false);
-  // Ref to hold the pause timer ID.
+  // State to show API processing message.
+  const [apiProcessing, setApiProcessing] = useState(false);
   const pauseTimerRef = useRef<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -95,23 +114,17 @@ function InterviewScreen() {
     useSpeechRecognition();
 
   // --- Configuration Constants ---
-  const OPENAI_API_KEY =
-    "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";
-  const STORE_INTERVIEW_ENDPOINT =
-    "https://vbajfgmatb.execute-api.us-east-1.amazonaws.com/prod/storeInterview";
-  const CANDIDATE_STATUS_ENDPOINT =
-    "https://l1i2uu3p32.execute-api.us-east-1.amazonaws.com/default/post_candidate_status";
-  const PRESIGNED_URL_ENDPOINT =
-    "https://071h9ufh65.execute-api.us-east-1.amazonaws.com/singedurl";
+  const OPENAI_API_KEY = "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";
+  const STORE_INTERVIEW_ENDPOINT = "https://vbajfgmatb.execute-api.us-east-1.amazonaws.com/prod/storeInterview";
+  const CANDIDATE_STATUS_ENDPOINT = "https://l1i2uu3p32.execute-api.us-east-1.amazonaws.com/default/post_candidate_status";
+  const PRESIGNED_URL_ENDPOINT = "https://071h9ufh65.execute-api.us-east-1.amazonaws.com/singedurl";
 
   // --- Speech Synthesis Setup (Male Voice) ---
   useEffect(() => {
     speechSynthesisRef.current = window.speechSynthesis;
     const loadVoices = () => {
       const voices = window.speechSynthesis.getVoices();
-      const maleVoices = voices.filter(
-        (voice) => !voice.name.toLowerCase().includes("female")
-      );
+      const maleVoices = voices.filter((voice) => !voice.name.toLowerCase().includes("female"));
       setMaleVoice(maleVoices[0] || voices[0]);
     };
     loadVoices();
@@ -186,8 +199,7 @@ function InterviewScreen() {
           ...apiQuestions,
         ]);
         if (response.data.total_time) {
-          // Convert minutes to seconds.
-          const totalSec = response.data.total_time * 60;
+          const totalSec = response.data.total_time * 60; // Convert minutes to seconds.
           setTotalTime(totalSec);
           setTimeLeft(Math.floor(totalSec / (apiQuestions.length + 1)));
         }
@@ -297,7 +309,6 @@ function InterviewScreen() {
       };
       mediaRecorder.start();
       setIsRecording(true);
-      analyzeCheating(mediaStream);
     } catch (error) {
       console.error("Error accessing camera:", error);
     }
@@ -432,65 +443,78 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     readQuestion();
   };
 
-  const handleNextOrFinish = async () => {
-    if (nextProcessing) return;
-    setNextProcessing(true);
+  // Inside handleNextOrFinish (after processing the answer)
+const handleNextOrFinish = async () => {
+  if (nextProcessing) return;
+  setNextProcessing(true);
+  setApiProcessing(true); // Show API processing loader
 
-    if (!questions[currentQuestion]) return;
-    const candidateAnswer = questions[currentQuestion].options ? selectedOption || "" : answer;
-    const currentResponse: ResponseData = {
-      questionId: questions[currentQuestion].id,
-      answer: candidateAnswer,
-      correctAnswer: questions[currentQuestion].correctAnswer,
-    };
+  if (!questions[currentQuestion]) return;
+  const candidateAnswer = questions[currentQuestion].options
+    ? selectedOption || ""
+    : answer;
+  const currentResponse: ResponseData = {
+    questionId: questions[currentQuestion].id,
+    answer: candidateAnswer, // Only the current answer is stored.
+    correctAnswer: questions[currentQuestion].correctAnswer,
+  };
 
-    const validation = await validateCandidateAnswer(candidateAnswer, questions[currentQuestion]);
-    console.log("Answer Validation:", validation);
-    currentResponse.answerValidation = validation;
+  const validation = await validateCandidateAnswer(candidateAnswer, questions[currentQuestion]);
+  currentResponse.answerValidation = validation;
     
-    const { dynamicQuestion, dynamicEvaluation, dynamicAccuracy } =
-      await generateDynamicQuestion(candidateAnswer, questions[currentQuestion]);
-    if (dynamicQuestion) {
-      currentResponse.dynamicEvaluation = dynamicEvaluation;
-      currentResponse.dynamicAccuracy = dynamicAccuracy;
-      const dynamicQ: Question = { id: Date.now(), text: dynamicQuestion };
-      setQuestions((prev) => {
-        const newArr = [...prev];
-        newArr.splice(currentQuestion + 1, 0, dynamicQ);
-        return newArr;
-      });
-    }
-    setResponses((prev) => [...prev, currentResponse]);
-    stopVideoRecording();
+  const { dynamicQuestion, dynamicEvaluation, dynamicAccuracy } =
+    await generateDynamicQuestion(candidateAnswer, questions[currentQuestion]);
+  if (dynamicQuestion) {
+    currentResponse.dynamicEvaluation = dynamicEvaluation;
+    currentResponse.dynamicAccuracy = dynamicAccuracy;
+    const dynamicQ: Question = { id: Date.now(), text: dynamicQuestion };
+    setQuestions((prev) => {
+      const newArr = [...prev];
+      newArr.splice(currentQuestion + 1, 0, dynamicQ);
+      return newArr;
+    });
+  }
+  setResponses((prev) => [...prev, currentResponse]);
+  stopVideoRecording();
 
-    // Enter animated pause state.
-    setIsPaused(true);
-    setPauseMessage("Processing your response...");
-    speechSynthesisRef.current?.cancel();
+  // Reset answer and selected option for the next question.
+  setAnswer("");
+  setSelectedOption(null);
+  resetTranscript(); // This clears the voice transcript so it won't carry over
 
-    pauseTimerRef.current = window.setTimeout(() => {
-      resumeInterview();
-    }, 5000);
-  };
+  // Remove API processing loader and then pause.
+  setApiProcessing(false);
+  setIsPaused(true);
+  setPauseMessage("Processing your response...");
 
-  // Function to resume interview after pause.
-  const resumeInterview = async () => {
-    setIsPaused(false);
-    setNextProcessing(false);
-    if (pauseTimerRef.current) {
-      clearTimeout(pauseTimerRef.current);
-      pauseTimerRef.current = null;
-    }
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion((prev) => prev + 1);
-      setTimeLeft(Math.floor(totalTime / questions.length));
-      await startVideoRecording();
-    } else {
-      // Last question answered; auto-submit.
-      setIsInterviewStarted(false);
-      submitInterview();
-    }
-  };
+  speechSynthesisRef.current?.cancel();
+
+  pauseTimerRef.current = window.setTimeout(() => {
+    resumeInterview();
+  }, 3000);
+};
+
+// Also in resumeInterview, make sure the transcript and answer are reset:
+const resumeInterview = async () => {
+  setIsPaused(false);
+  setNextProcessing(false);
+  if (pauseTimerRef.current) {
+    clearTimeout(pauseTimerRef.current);
+    pauseTimerRef.current = null;
+  }
+  if (currentQuestion < questions.length - 1) {
+    setCurrentQuestion((prev) => prev + 1);
+    setAnswer("");       // Clear answer for next question
+    resetTranscript();   // Clear transcript from voice input
+    setTimeLeft(Math.floor(totalTime / questions.length));
+    await startVideoRecording();
+  } else {
+    // Last question answered; auto-submit.
+    setIsInterviewStarted(false);
+    submitInterview();
+  }
+};
+
 
   // --- Final Evaluation & Submission ---
   const evaluateInterview = async () => {
@@ -509,19 +533,20 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     try {
       const avgValidatedScore = await evaluateInterview();
       const candidateStatus = avgValidatedScore > 40 ? 10 : 5;
+      const jobIdInt = parseInt(job.job_id || job.id, 10);
       await axios.post(
         CANDIDATE_STATUS_ENDPOINT,
         { 
           candidateId, 
           companyId: job.company_id, 
-          jobId: job.job_id || job.id,
+          jobId: jobIdInt,
           status: candidateStatus 
         },
         { headers: { "Content-Type": "application/json" } }
       );
       const payload = { 
         candidateId, 
-        jobId: job.job_id || job.id, 
+        jobId: jobIdInt, 
         responses, 
         finalScore: avgValidatedScore 
       };
@@ -531,8 +556,6 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
         { headers: { "Content-Type": "application/json" } }
       );
       setSubmitted(true);
-      // Instead of showing candidate answers, display a neat thank-you card.
-      // Wait for 3 seconds before redirecting.
       setTimeout(() => {
         navigate("/candidate-dashboard", { state: { message: "Thanks for attending the interview, we will update you soon." } });
       }, 3000);
@@ -568,7 +591,6 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
               </button>
             </div>
           ) : (
-            // Neat Thank You Card after submission.
             <div className="bg-[#1A1528] rounded-xl p-8 shadow-lg border border-gray-800 text-center">
               <h2 className="text-2xl font-bold mb-4">Thanks for attending the interview</h2>
               <p className="text-gray-300">We will update you soon.</p>
@@ -640,7 +662,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
                 </div>
               ) : (
                 <>
-                  <div className="flex gap-4 mb-4">
+                  <div className="flex gap-4 mb-4 items-center">
                     <button
                       onClick={() => setIsVoiceMode(false)}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg ${!isVoiceMode ? "bg-purple-600" : "bg-[#2A1528]"}`}
@@ -650,25 +672,43 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
                     </button>
                     <button
                       onClick={toggleVoiceMode}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg ${isVoiceMode ? "bg-purple-600" : "bg-[#2A1528]"}`}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                        isVoiceMode && listening ? "bg-purple-600" : "bg-[#2A1528]"
+                      }`}
                     >
                       <Mic className="w-5 h-5" />
-                      Voice {listening && "(Recording...)"}
+                      Voice
+                      {isVoiceMode && listening && (
+                        <span className="ml-2 flex items-center gap-1">
+                          <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                          Recording...
+                        </span>
+                      )}
+                      {isVoiceMode && !listening && (
+                        <span className="ml-2 text-green-400">Saved</span>
+                      )}
                     </button>
                   </div>
                   <textarea
                     value={answer}
                     onChange={(e) => !isVoiceMode && setAnswer(e.target.value)}
                     placeholder={isVoiceMode ? "Speak your answer..." : "Type your answer..."}
-                    className="w-full h-32 px-4 py-2 bg-[#2A1528] border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    // Adding a fade-in animation class for the text
+                    className="w-full h-32 px-4 py-2 bg-[#2A1528] border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent shadow-lg transition-all duration-500 animate-fadeIn"
                     readOnly={isVoiceMode}
                   />
                 </>
               )}
               <div className="flex justify-end mt-8">
+                {apiProcessing && (
+                  <div className="mr-4 flex items-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-blue-500"></div>
+                    <span className="ml-2">Processing your answer...</span>
+                  </div>
+                )}
                 <button
                   onClick={handleNextOrFinish}
-                  disabled={nextProcessing}
+                  disabled={nextProcessing || apiProcessing}
                   className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-500 rounded-lg hover:from-purple-700 hover:to-blue-600 transition-colors disabled:opacity-50"
                 >
                   {currentQuestion === questions.length - 1 ? "Finish" : "Next Question"}
