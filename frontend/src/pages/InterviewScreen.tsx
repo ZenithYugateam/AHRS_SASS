@@ -51,27 +51,11 @@ function InterviewScreen() {
 
   if (!job) return null;
 
-<<<<<<< Updated upstream
   // Retrieve candidate email from local storage (login session).
   const candidateEmail =  sessionStorage.getItem("user") || " no candiaite id";
   const email = JSON.parse(candidateEmail).email;
   console.log(email)
     
-=======
-  // Retrieve candidate email from session storage (login session).
-  let candidateEmail = "";
-  const storedUser = sessionStorage.getItem("user");
-  if (storedUser) {
-    try {
-      candidateEmail = JSON.parse(storedUser).email;
-    } catch (e) {
-      candidateEmail = storedUser;
-    }
-  } else {
-    candidateEmail = "unknown@candidate.com";
-  }
-  console.log("Candidate Email:", candidateEmail);
->>>>>>> Stashed changes
 
   // State variables.
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -86,12 +70,8 @@ function InterviewScreen() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isInterviewStarted, setIsInterviewStarted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-<<<<<<< Updated upstream
   // Use candidate email as candidateId.
   const [candidateId] = useState<string>(email);
-=======
-  const [candidateId] = useState<string>(candidateEmail);
->>>>>>> Stashed changes
   const [isPaused, setIsPaused] = useState(false);
   const [pauseMessage, setPauseMessage] = useState("");
   const [submissionLoading, setSubmissionLoading] = useState(false);
