@@ -14,11 +14,14 @@ import AppliedJobs from './pages/AppliedJobs';
 import Offers from './pages/Offers';
 import CandidateDetailsPage from './pages/CandidateDetailsPage';
 import Profile from './pages/UserProfile';
+import { ToastContainer } from 'react-toastify';
 
 
 
 function App() {
   return (
+    <>
+    <ToastContainer />
     <Router>
       <Routes>
         <Route path="/signin" element={<SignIn />} />
@@ -37,6 +40,7 @@ function App() {
         <Route path="/profile" element={<Profile/>}/>;
       </Routes>
     </Router>
+  </>
   );
 }
 
