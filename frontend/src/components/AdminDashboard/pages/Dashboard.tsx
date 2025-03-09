@@ -88,28 +88,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Revenue Dashboard</h2>
+        <h2 className="text-2xl font-bold">Dashboard</h2>
         <div className="flex space-x-3">
-          <div className="flex space-x-2">
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm font-medium ${timeFilter === 'week' ? 'bg-purple-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-              onClick={() => setTimeFilter('week')}
-            >
-              Week
-            </button>
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm font-medium ${timeFilter === 'month' ? 'bg-purple-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-              onClick={() => setTimeFilter('month')}
-            >
-              Month
-            </button>
-            <button 
-              className={`px-3 py-1.5 rounded-md text-sm font-medium ${timeFilter === 'year' ? 'bg-purple-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-              onClick={() => setTimeFilter('year')}
-            >
-              Year
-            </button>
-          </div>
           <button 
             className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-md flex items-center shadow-md"
             onClick={navigateToPricing}
