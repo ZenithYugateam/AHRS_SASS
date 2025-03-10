@@ -36,34 +36,39 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     try {
       setIsProcessing(true);
       setError(null);
-  
-      // ✅ Construct payload based on your expected JSON structure
+
+      // Get the current date in ISO string format
+      const currentDate = new Date().toISOString();
+
+      // Construct payload including the date for payments and subscriptions
       const payload = {
-        email: email, // ✅ Add email at the top level
+        email: email, // Top-level email
         paymentDetails: {
-          email: email, // ✅ Add email inside paymentDetails
+          email: email,
           amount: amount,
           currency: "USD",
           transactionId: response.razorpay_payment_id,
-          paymentMethod: "card"
+          paymentMethod: "card",
+          date: currentDate // Added date for payment
         },
         subscriptionDetails: {
-          email: email,  
+          email: email,
           type: subscriptionType,
           tokensPurchased: tokensPurchased,
-          tokensLeft: tokensPurchased // ✅ Add tokensLeft with the same value as tokensPurchased
+          tokensLeft: tokensPurchased,
+          date: currentDate // Added date for subscription
         }
       };
-  
-      // ✅ Log payload for debugging
+
+      // Log payload for debugging
       console.log("Final Payment Payload:", JSON.stringify(payload, null, 2));
-  
-      // ✅ POST the payload (including email in both places) to your API
+
+      // POST the payload (including email and date in both sections) to your API
       await axios.post(
         "https://l8kyqmz0fc.execute-api.us-east-1.amazonaws.com/default/test",
         payload
       );
-  
+
       setIsProcessing(false);
       onSuccess();
     } catch (err) {
@@ -72,7 +77,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       setIsProcessing(false);
     }
   };
-  
 
   const handlePayment = () => {
     setError(null);
@@ -93,7 +97,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
         handler: (response: any) => {
           handlePaymentSuccess(response);
         },
-        // ✅ Prefill the checkout with the user's email
+        // Prefill the checkout with the user's email
         prefill: {
           email: email
         },

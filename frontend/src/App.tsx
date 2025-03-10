@@ -40,6 +40,7 @@ function App() {
         <Route path="/total-interview" element={<CandidateDetailsPage/>}/>;
         <Route path="/profile" element={<Profile/>}/>;
         <Route path="/analysis/:candidateId" element={<CandidateAnalysisPage />} />
+        
       </Routes>
     </Router>
   </>
