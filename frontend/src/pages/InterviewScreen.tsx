@@ -21,6 +21,7 @@ interface AnswerValidation {
 interface ResponseData {
   questionId: number;
   answer: string;
+  text: string;
   correctAnswer?: string;
   videoUrl?: string;
   dynamicEvaluation?: string;
@@ -435,6 +436,7 @@ const handleNextOrFinish = async () => {
     : answer;
   const currentResponse: ResponseData = {
     questionId: questions[currentQuestion].id,
+    text: questions[currentQuestion].text,
     answer: candidateAnswer, // Only the current answer is stored.
     correctAnswer: questions[currentQuestion].correctAnswer,
   };
