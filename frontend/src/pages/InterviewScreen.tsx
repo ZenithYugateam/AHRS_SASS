@@ -425,56 +425,57 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
   };
 
   // Inside handleNextOrFinish (after processing the answer)
-const handleNextOrFinish = async () => {
-  if (nextProcessing) return;
-  setNextProcessing(true);
-  setApiProcessing(true); // Show API processing loader
-
-  if (!questions[currentQuestion]) return;
-  const candidateAnswer = questions[currentQuestion].options
-    ? selectedOption || ""
-    : answer;
-  const currentResponse: ResponseData = {
-    questionId: questions[currentQuestion].id,
-    text: questions[currentQuestion].text,
-    answer: candidateAnswer, // Only the current answer is stored.
-    correctAnswer: questions[currentQuestion].correctAnswer,
+  const handleNextOrFinish = async () => {
+    if (nextProcessing) return;
+    setNextProcessing(true);
+    setApiProcessing(true); // Show API processing loader
+  
+    if (!questions[currentQuestion]) return;
+    const candidateAnswer = questions[currentQuestion].options
+      ? selectedOption || ""
+      : answer;
+    const currentResponse: ResponseData = {
+      questionId: questions[currentQuestion].id,
+      text: questions[currentQuestion].text, // Add question text
+      answer: candidateAnswer, // Only the current answer is stored.
+      correctAnswer: questions[currentQuestion].correctAnswer,
+    };
+  
+    const validation = await validateCandidateAnswer(candidateAnswer, questions[currentQuestion]);
+    currentResponse.answerValidation = validation;
+      
+    const { dynamicQuestion, dynamicEvaluation, dynamicAccuracy } =
+      await generateDynamicQuestion(candidateAnswer, questions[currentQuestion]);
+    if (dynamicQuestion) {
+      currentResponse.dynamicEvaluation = dynamicEvaluation;
+      currentResponse.dynamicAccuracy = dynamicAccuracy;
+      const dynamicQ: Question = { id: Date.now(), text: dynamicQuestion };
+      setQuestions((prev) => {
+        const newArr = [...prev];
+        newArr.splice(currentQuestion + 1, 0, dynamicQ);
+        return newArr;
+      });
+    }
+    setResponses((prev) => [...prev, currentResponse]);
+    stopVideoRecording();
+  
+    // Reset answer and selected option for the next question.
+    setAnswer("");
+    setSelectedOption(null);
+    resetTranscript(); // This clears the voice transcript so it won't carry over
+  
+    // Remove API processing loader and then pause.
+    setApiProcessing(false);
+    setIsPaused(true);
+    setPauseMessage("Processing your response...");
+  
+    speechSynthesisRef.current?.cancel();
+  
+    pauseTimerRef.current = window.setTimeout(() => {
+      resumeInterview();
+    }, 3000);
   };
-
-  const validation = await validateCandidateAnswer(candidateAnswer, questions[currentQuestion]);
-  currentResponse.answerValidation = validation;
-    
-  const { dynamicQuestion, dynamicEvaluation, dynamicAccuracy } =
-    await generateDynamicQuestion(candidateAnswer, questions[currentQuestion]);
-  if (dynamicQuestion) {
-    currentResponse.dynamicEvaluation = dynamicEvaluation;
-    currentResponse.dynamicAccuracy = dynamicAccuracy;
-    const dynamicQ: Question = { id: Date.now(), text: dynamicQuestion };
-    setQuestions((prev) => {
-      const newArr = [...prev];
-      newArr.splice(currentQuestion + 1, 0, dynamicQ);
-      return newArr;
-    });
-  }
-  setResponses((prev) => [...prev, currentResponse]);
-  stopVideoRecording();
-
-  // Reset answer and selected option for the next question.
-  setAnswer("");
-  setSelectedOption(null);
-  resetTranscript(); // This clears the voice transcript so it won't carry over
-
-  // Remove API processing loader and then pause.
-  setApiProcessing(false);
-  setIsPaused(true);
-  setPauseMessage("Processing your response...");
-
-  speechSynthesisRef.current?.cancel();
-
-  pauseTimerRef.current = window.setTimeout(() => {
-    resumeInterview();
-  }, 3000);
-};
+  
 
 // Also in resumeInterview, make sure the transcript and answer are reset:
 const resumeInterview = async () => {

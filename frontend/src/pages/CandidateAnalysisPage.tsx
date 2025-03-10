@@ -165,7 +165,7 @@ function QuestionDetails({ question }: { question: ResponseItem }) {
       >
         <div className="flex items-center gap-3">
           <FileText className="w-5 h-5 text-purple-400" />
-          <span className="text-white">Question {question.questionId}</span>
+          <span className="text-white">Question {question.questionId}: {question.text}</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-red-500">
@@ -229,6 +229,7 @@ function QuestionDetails({ question }: { question: ResponseItem }) {
     </div>
   );
 }
+
 
 function DetailedAnalysis({ questions }: { questions: ResponseItem[] }) {
   return (
