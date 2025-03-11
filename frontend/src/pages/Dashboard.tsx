@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Package,
   User,
@@ -17,10 +17,11 @@ import {
   Briefcase,
   MapPin,
   DollarSign,
-  LogOut
-} from 'lucide-react';
-import axios from 'axios';
-import PaymentModal from '../components/StripePayment';
+  LogOut,
+} from "lucide-react";
+import axios from "axios";
+import PaymentModal from "../components/StripePayment";
+import Companyprofile from "../components/Companyprofile/Companyprofile";
 
 // Custom ChevronUp and ChevronDown components
 const ChevronUp = ({ size = 24, ...props }: { size?: number }) => (
@@ -111,18 +112,26 @@ function Dashboard() {
   const [userName, setUserName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   // Additional states
   const [isSubscriptionExpanded, setIsSubscriptionExpanded] = useState(false);
-  const [currentPage, setCurrentPage] = useState('home');
+  const [currentPage, setCurrentPage] = useState("home");
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [pricingData, setPricingData] = useState<PricingData>({ plans: [], tokenPackages: [] });
+  const [pricingData, setPricingData] = useState<PricingData>({
+    plans: [],
+    tokenPackages: [],
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<TokenPackage | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<TokenPackage | null>(
+    null
+  );
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
+    null
+  );
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [paymentType, setPaymentType] = useState<'token' | 'plan' | null>(null);
+  const [paymentType, setPaymentType] = useState<"token" | "plan" | null>(null);
   const [customTokenModalOpen, setCustomTokenModalOpen] = useState(false);
   const [customTokenAmount, setCustomTokenAmount] = useState<number>(100);
   const [customTokenPrice, setCustomTokenPrice] = useState<number>(0);
@@ -158,20 +167,27 @@ function Dashboard() {
     setIsLoading(true);
     try {
       if (!sessionEmail) {
-        console.warn("No email found in session storage for subscription fetch.");
+        console.warn(
+          "No email found in session storage for subscription fetch."
+        );
         setIsLoading(false);
         return;
       }
       const response = await axios.get(
         `https://ywl2agqqd3.execute-api.us-east-1.amazonaws.com/default/fechdetails?email=${sessionEmail}`
       );
-      
-      if (response.data && response.data.subscriptions && response.data.subscriptions.length > 0) {
+
+      if (
+        response.data &&
+        response.data.subscriptions &&
+        response.data.subscriptions.length > 0
+      ) {
         const sub = response.data.subscriptions[0];
-        
+
         // Find matching plan from pricing data
-        const matchingPlan = pricingData.plans.find(plan => 
-          plan.name.toLowerCase() === sub.subscriptionType?.toLowerCase()
+        const matchingPlan = pricingData.plans.find(
+          (plan) =>
+            plan.name.toLowerCase() === sub.subscriptionType?.toLowerCase()
         );
 
         if (matchingPlan) {
@@ -183,18 +199,18 @@ function Dashboard() {
             features: [
               ...matchingPlan.features,
               `Tokens Left: ${sub.tokensLeft}`,
-              `Transaction ID: ${sub.transactionId}`
-            ]
+              `Transaction ID: ${sub.transactionId}`,
+            ],
           };
           setCurrentPlan(updatedPlan);
 
           // Update pricing data to reflect current plan
-          setPricingData(prev => ({
+          setPricingData((prev) => ({
             ...prev,
-            plans: prev.plans.map(plan => ({
+            plans: prev.plans.map((plan) => ({
               ...plan,
-              current: plan.id === matchingPlan.id
-            }))
+              current: plan.id === matchingPlan.id,
+            })),
           }));
         } else {
           // If no matching plan, create a new one from subscription data
@@ -206,11 +222,11 @@ function Dashboard() {
             features: [
               `Tokens Left: ${sub.tokensLeft}`,
               `Tokens Purchased: ${sub.tokensPurchased}`,
-              `Transaction ID: ${sub.transactionId}`
+              `Transaction ID: ${sub.transactionId}`,
             ],
             tokens: parseInt(sub.tokensLeft) || 0,
             interviews: 20,
-            current: true
+            current: true,
           };
           setCurrentPlan(newPlan);
         }
@@ -225,15 +241,17 @@ function Dashboard() {
 
   const fetchCompanyJobs = async () => {
     try {
-      const storedUser = sessionStorage.getItem('user');
-      const companyId = storedUser ? JSON.parse(storedUser).email : 'default@example.com';
+      const storedUser = sessionStorage.getItem("user");
+      const companyId = storedUser
+        ? JSON.parse(storedUser).email
+        : "default@example.com";
       const response = await axios.post(
-        'https://ujohw8hshk.execute-api.us-east-1.amazonaws.com/default/get_company_posted_jobs',
+        "https://ujohw8hshk.execute-api.us-east-1.amazonaws.com/default/get_company_posted_jobs",
         { company_id: companyId }
       );
       setJobs(response.data.jobs || []);
     } catch (error) {
-      console.error('Error fetching jobs:', error);
+      console.error("Error fetching jobs:", error);
       setJobs([]);
     }
   };
@@ -243,15 +261,15 @@ function Dashboard() {
     setIsLoading(true);
     try {
       const response = await axios.get(
-        'https://ngwu0au0uh.execute-api.us-east-1.amazonaws.com/default/get_pricing_list'
+        "https://ngwu0au0uh.execute-api.us-east-1.amazonaws.com/default/get_pricing_list"
       );
-      
+
       if (response.data) {
         const transformedData = transformApiResponse(response.data);
         setPricingData(transformedData);
       }
     } catch (error) {
-      console.error('Error fetching pricing data:', error);
+      console.error("Error fetching pricing data:", error);
     } finally {
       setIsLoading(false);
     }
@@ -264,10 +282,10 @@ function Dashboard() {
       const response = await axios.get(
         `https://p103cwsao7.execute-api.us-east-1.amazonaws.com/default/get_total_interview?company_id=${sessionEmail}`
       );
-      
+
       const jobsData = response.data.jobs || [];
       const candidateRows: CandidateRow[] = [];
-      
+
       jobsData.forEach((job: any) => {
         if (job.candidateList && Array.isArray(job.candidateList)) {
           job.candidateList.forEach((candidate: any) => {
@@ -275,30 +293,32 @@ function Dashboard() {
               candidateId: candidate.candidateId,
               jobId: job.job_id,
               status: candidate.status,
-              title: job.title || 'N/A',
-              postedOn: job.posted_on || 'N/A',
+              title: job.title || "N/A",
+              postedOn: job.posted_on || "N/A",
             });
           });
         }
       });
-      
+
       setTotalInterviews(jobsData.length);
       setTotalParticipants(candidateRows.length);
-      setTotalQualified(candidateRows.filter(candidate => candidate.status === 10).length);
+      setTotalQualified(
+        candidateRows.filter((candidate) => candidate.status === 10).length
+      );
     } catch (error) {
       console.error("Error fetching interview stats:", error);
     }
   };
 
   /**
-   * Transform API response to populate pricing data. 
+   * Transform API response to populate pricing data.
    * If the API does not provide an explicit features array, we build it dynamically.
    */
   const transformApiResponse = (apiData: any): PricingData => {
     if (!apiData) {
       return {
         plans: [],
-        tokenPackages: []
+        tokenPackages: [],
       };
     }
 
@@ -309,7 +329,7 @@ function Dashboard() {
           id: item.id || `plan-${index}`,
           name: item.name || `Plan ${index + 1}`,
           price: parseFloat(item.price) || 0,
-          description: item.description || '',
+          description: item.description || "",
           // If features exist, use them; otherwise build from item tokens, duration, tokensPerMinute
           features: item.features?.length
             ? item.features
@@ -317,14 +337,14 @@ function Dashboard() {
                 `${item.tokens} tokens subscription`,
                 `${item.tokens} tokens per month`,
                 `Duration: ${item.duration} days`,
-                `${item.tokensPerMinute || 100} tokens per minute`
+                `${item.tokensPerMinute || 100} tokens per minute`,
               ],
           tokens: parseInt(item.tokens) || 0,
           interviews: parseInt(item.interviews) || 0,
           duration: item.duration,
-          current: false
+          current: false,
         })),
-        tokenPackages: apiData.tokenPackages
+        tokenPackages: apiData.tokenPackages,
       };
     }
 
@@ -334,42 +354,42 @@ function Dashboard() {
         id: item.id || `plan-${index}`,
         name: item.name || `Plan ${index + 1}`,
         price: parseFloat(item.price) || 0,
-        description: item.description || '',
+        description: item.description || "",
         features: item.features?.length
           ? item.features
           : [
               `${item.tokens} tokens subscription`,
               `${item.tokens} tokens per month`,
               `Duration: ${item.duration} days`,
-              `${item.tokensPerMinute || 100} tokens per minute`
+              `${item.tokensPerMinute || 100} tokens per minute`,
             ],
         tokens: parseInt(item.tokens) || 0,
         interviews: parseInt(item.interviews) || 0,
         duration: item.duration,
-        current: false
+        current: false,
       }));
       return { plans, tokenPackages: [] };
     }
 
     // If the API returns a single plan object
-    if (typeof apiData === 'object' && apiData.id && apiData.name) {
+    if (typeof apiData === "object" && apiData.id && apiData.name) {
       const plan: SubscriptionPlan = {
         id: apiData.id,
         name: apiData.name,
         price: parseFloat(apiData.price) || 0,
-        description: apiData.description || '',
+        description: apiData.description || "",
         features: apiData.features?.length
           ? apiData.features
           : [
               `${apiData.tokens} tokens subscription`,
               `${apiData.tokens} tokens per month`,
               `Duration: ${apiData.duration} days`,
-              `${apiData.tokensPerMinute || 100} tokens per minute`
+              `${apiData.tokensPerMinute || 100} tokens per minute`,
             ],
         tokens: parseInt(apiData.tokens) || 0,
         interviews: parseInt(apiData.interviews) || 0,
         duration: apiData.duration,
-        current: false
+        current: false,
       };
       return { plans: [plan], tokenPackages: [] };
     }
@@ -377,7 +397,7 @@ function Dashboard() {
     // Default fallback
     return {
       plans: [],
-      tokenPackages: []
+      tokenPackages: [],
     };
   };
 
@@ -402,14 +422,14 @@ function Dashboard() {
   // Navigation helper
   const navigateTo = (page: string) => {
     setCurrentPage(page);
-    if (page !== 'home') {
+    if (page !== "home") {
       setIsSubscriptionExpanded(false);
     }
   };
 
   // Open Interview Maker
   const openInterviewMaker = () => {
-    setCurrentPage('interview-maker');
+    setCurrentPage("interview-maker");
   };
 
   // Handle applying to a job
@@ -421,14 +441,14 @@ function Dashboard() {
   const handleLogout = () => {
     sessionStorage.clear();
     localStorage.clear();
-    navigate('/');
+    navigate("/");
   };
 
   // Handle token package purchase
   const handlePurchaseTokens = (pkg: TokenPackage) => {
     setSelectedPackage(pkg);
     setSelectedPlan(null);
-    setPaymentType('token');
+    setPaymentType("token");
     setPaymentModalOpen(true);
   };
 
@@ -436,22 +456,22 @@ function Dashboard() {
   const handleSelectPlan = (plan: SubscriptionPlan) => {
     setSelectedPlan(plan);
     setSelectedPackage(null);
-    setPaymentType('plan');
+    setPaymentType("plan");
     setPaymentModalOpen(true);
   };
 
   // Handle payment success
   const handlePaymentSuccess = () => {
-    if (paymentType === 'token' && selectedPackage) {
-      setCurrentPlan(prevPlan => {
+    if (paymentType === "token" && selectedPackage) {
+      setCurrentPlan((prevPlan) => {
         if (prevPlan) {
           return {
             ...prevPlan,
             tokens: prevPlan.tokens + selectedPackage.tokens,
             features: [
               ...prevPlan.features,
-              `Added ${selectedPackage.tokens} tokens`
-            ]
+              `Added ${selectedPackage.tokens} tokens`,
+            ],
           };
         }
         return {
@@ -462,17 +482,17 @@ function Dashboard() {
           features: [`Tokens Purchased: ${selectedPackage.tokens}`],
           tokens: selectedPackage.tokens,
           interviews: 0,
-          duration: "N/A"
+          duration: "N/A",
         };
       });
-    } else if (paymentType === 'plan' && selectedPlan) {
+    } else if (paymentType === "plan" && selectedPlan) {
       setCurrentPlan(selectedPlan);
-      setPricingData(prev => ({
+      setPricingData((prev) => ({
         ...prev,
-        plans: prev.plans.map(plan => ({
+        plans: prev.plans.map((plan) => ({
           ...plan,
-          current: plan.id === selectedPlan.id
-        }))
+          current: plan.id === selectedPlan.id,
+        })),
       }));
     }
     setPaymentSuccess(true);
@@ -486,15 +506,19 @@ function Dashboard() {
     ? Math.max(
         0,
         currentPlan.tokens -
-          (parseInt(
-            currentPlan?.features?.find((f) => f.startsWith('Tokens Left:'))?.split(': ')[1] || '0'
-          ))
+          parseInt(
+            currentPlan?.features
+              ?.find((f) => f.startsWith("Tokens Left:"))
+              ?.split(": ")[1] || "0"
+          )
       )
     : 0;
 
   const tokensRemaining = currentPlan
     ? parseInt(
-        currentPlan?.features?.find((f) => f.startsWith('Tokens Left:'))?.split(': ')[1] || '0'
+        currentPlan?.features
+          ?.find((f) => f.startsWith("Tokens Left:"))
+          ?.split(": ")[1] || "0"
       )
     : 0;
 
@@ -516,14 +540,14 @@ function Dashboard() {
   // Handle custom token purchase
   const handleCustomTokenPurchase = () => {
     const customPackage: TokenPackage = {
-      id: 'custom',
+      id: "custom",
       name: `${customTokenAmount} Custom Tokens`,
       tokens: customTokenAmount,
       price: customTokenPrice,
-      description: 'Custom token package'
+      description: "Custom token package",
     };
     setSelectedPackage(customPackage);
-    setPaymentType('token');
+    setPaymentType("token");
     setCustomTokenModalOpen(false);
     setPaymentModalOpen(true);
   };
@@ -552,13 +576,17 @@ function Dashboard() {
                 min="1"
                 value={customTokenAmount}
                 onChange={(e) =>
-                  setCustomTokenAmount(Math.max(1, parseInt(e.target.value) || 0))
+                  setCustomTokenAmount(
+                    Math.max(1, parseInt(e.target.value) || 0)
+                  )
                 }
                 className="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white"
               />
             </div>
             <div className="mb-6">
-              <p className="text-sm text-gray-300">Estimated Price: ${customTokenPrice}</p>
+              <p className="text-sm text-gray-300">
+                Estimated Price: ${customTokenPrice}
+              </p>
               <p className="text-xs text-gray-400">($0.15 per token)</p>
             </div>
             <div className="flex justify-end space-x-3">
@@ -583,13 +611,19 @@ function Dashboard() {
       <PaymentModal
         isOpen={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
-        amount={selectedPackage ? selectedPackage.price : selectedPlan ? selectedPlan.price : 0}
+        amount={
+          selectedPackage
+            ? selectedPackage.price
+            : selectedPlan
+            ? selectedPlan.price
+            : 0
+        }
         description={
           selectedPackage
             ? `Purchase ${selectedPackage.name} (${selectedPackage.tokens} tokens)`
             : selectedPlan
             ? `Subscribe to ${selectedPlan.name} Plan`
-            : ''
+            : ""
         }
         onSuccess={handlePaymentSuccess}
         tokensPurchased={selectedPackage ? selectedPackage.tokens : undefined}
@@ -605,15 +639,17 @@ function Dashboard() {
           <h1 className="text-2xl font-bold">Interview 24/7</h1>
         </div>
         <div className="text-lg font-medium">
-          {userEmail ? `Hi, ${userEmail.split('@')[0]} 👋` : "Hi, User! 👋"}
+          {userEmail ? `Hi, ${userEmail.split("@")[0]} 👋` : "Hi, User! 👋"}
         </div>
         <nav className="hidden md:flex items-center space-x-6">
           <a
             href="#"
             className={`flex items-center space-x-2 ${
-              currentPage === 'home' ? 'text-purple-400' : 'hover:text-purple-400'
+              currentPage === "home"
+                ? "text-purple-400"
+                : "hover:text-purple-400"
             }`}
-            onClick={() => navigateTo('home')}
+            onClick={() => navigateTo("home")}
           >
             <Home size={20} />
             <span>Home</span>
@@ -621,9 +657,11 @@ function Dashboard() {
           <a
             href="#"
             className={`flex items-center space-x-2 ${
-              currentPage === 'packages' ? 'text-purple-400' : 'hover:text-purple-400'
+              currentPage === "packages"
+                ? "text-purple-400"
+                : "hover:text-purple-400"
             }`}
-            onClick={() => navigateTo('packages')}
+            onClick={() => navigateTo("packages")}
           >
             <Package size={20} />
             <span>Packages</span>
@@ -636,7 +674,14 @@ function Dashboard() {
             <Mic size={20} />
             <span>Interview Maker</span>
           </a>
-          <a href="#" className="flex items-center space-x-2 hover:text-purple-400">
+          <a
+            href="#"
+            className="flex items-center space-x-2 hover:text-purple-400"
+            onClick={(e) => {
+              e.preventDefault(); // Prevent default link behavior
+              navigate("/Companyprofile"); // Navigate to the profile page
+            }}
+          >
             <User size={20} />
             <span>Profile</span>
           </a>
@@ -644,7 +689,7 @@ function Dashboard() {
         <div className="flex items-center space-x-4">
           <button
             className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md"
-            onClick={() => navigateTo('packages')}
+            onClick={() => navigateTo("packages")}
           >
             Manage Subscription
           </button>
@@ -671,7 +716,7 @@ function Dashboard() {
           </div>
         ) : (
           <>
-            {currentPage === 'home' && (
+            {currentPage === "home" && (
               <>
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -679,8 +724,12 @@ function Dashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-lg mb-2">Total Interviews</p>
-                        <h3 className="text-5xl font-bold mb-2">{totalInterviews}</h3>
-                        <p className="text-sm mb-4">{totalInterviews} Applications</p>
+                        <h3 className="text-5xl font-bold mb-2">
+                          {totalInterviews}
+                        </h3>
+                        <p className="text-sm mb-4">
+                          {totalInterviews} Applications
+                        </p>
                         <button
                           className="text-white hover:underline"
                           onClick={() => navigate("/total-interview")}
@@ -695,9 +744,15 @@ function Dashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-lg mb-2">Total Participants</p>
-                        <h3 className="text-5xl font-bold mb-2">{totalParticipants}</h3>
-                        <p className="text-sm mb-4">{totalParticipants} Applications</p>
-                        <button className="text-white hover:underline">View Details</button>
+                        <h3 className="text-5xl font-bold mb-2">
+                          {totalParticipants}
+                        </h3>
+                        <p className="text-sm mb-4">
+                          {totalParticipants} Applications
+                        </p>
+                        <button className="text-white hover:underline">
+                          View Details
+                        </button>
                       </div>
                       <Users size={24} />
                     </div>
@@ -706,9 +761,15 @@ function Dashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-lg mb-2">Total Qualified</p>
-                        <h3 className="text-5xl font-bold mb-2">{totalQualified}</h3>
-                        <p className="text-sm mb-4">{totalQualified} Applications</p>
-                        <button className="text-white hover:underline">View Details</button>
+                        <h3 className="text-5xl font-bold mb-2">
+                          {totalQualified}
+                        </h3>
+                        <p className="text-sm mb-4">
+                          {totalQualified} Applications
+                        </p>
+                        <button className="text-white hover:underline">
+                          View Details
+                        </button>
                       </div>
                       <Target size={24} />
                     </div>
@@ -717,11 +778,13 @@ function Dashboard() {
               </>
             )}
 
-            {currentPage === 'packages' && (
+            {currentPage === "packages" && (
               <>
                 <div className="mb-8">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-3xl font-bold">Subscription & Packages</h2>
+                    <h2 className="text-3xl font-bold">
+                      Subscription & Packages
+                    </h2>
                   </div>
 
                   {/* Current Subscription Overview */}
@@ -741,7 +804,9 @@ function Dashboard() {
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                              <p className="text-sm text-purple-200 mb-1">Tokens Usage</p>
+                              <p className="text-sm text-purple-200 mb-1">
+                                Tokens Usage
+                              </p>
                               <div className="w-full bg-purple-900 rounded-full h-3 mb-1">
                                 <div
                                   className="bg-white h-3 rounded-full"
@@ -754,7 +819,9 @@ function Dashboard() {
                               </div>
                             </div>
                             <div>
-                              <p className="text-sm text-purple-200 mb-1">Interviews Conducted</p>
+                              <p className="text-sm text-purple-200 mb-1">
+                                Interviews Conducted
+                              </p>
                               <div className="w-full bg-purple-900 rounded-full h-3 mb-1">
                                 <div
                                   className="bg-white h-3 rounded-full"
@@ -781,9 +848,10 @@ function Dashboard() {
                               onClick={() => {
                                 // Example: If you have an enterprise plan with id "enterprise"
                                 const enterprisePlan = pricingData.plans.find(
-                                  (p) => p.id === 'enterprise'
+                                  (p) => p.id === "enterprise"
                                 );
-                                if (enterprisePlan) handleSelectPlan(enterprisePlan);
+                                if (enterprisePlan)
+                                  handleSelectPlan(enterprisePlan);
                               }}
                             >
                               Upgrade
@@ -793,10 +861,11 @@ function Dashboard() {
                       </div>
                     </div>
                   )}
-                  
                   {/* Token Packages */}
                   <div className="bg-gray-800 rounded-lg p-6 mb-8">
-                    <h3 className="text-xl font-bold mb-4">Need More Tokens?</h3>
+                    <h3 className="text-xl font-bold mb-4">
+                      Need More Tokens?
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       {pricingData.tokenPackages.map((pkg) => (
                         <div
@@ -809,8 +878,12 @@ function Dashboard() {
                             </div>
                           )}
                           <h4 className="font-bold mb-2">{pkg.name}</h4>
-                          <p className="text-2xl font-bold mb-2">${pkg.price}</p>
-                          <p className="text-sm text-gray-300 mb-4">{pkg.description}</p>
+                          <p className="text-2xl font-bold mb-2">
+                            ${pkg.price}
+                          </p>
+                          <p className="text-sm text-gray-300 mb-4">
+                            {pkg.description}
+                          </p>
                           <button
                             className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded text-sm"
                             onClick={() => handlePurchaseTokens(pkg)}
@@ -824,7 +897,8 @@ function Dashboard() {
                         <h4 className="font-bold mb-2">Custom Amount</h4>
                         <p className="text-2xl font-bold mb-2">You Decide</p>
                         <p className="text-sm text-gray-300 mb-4">
-                          Need a specific number of tokens? Create your custom package.
+                          Need a specific number of tokens? Create your custom
+                          package.
                         </p>
                         <button
                           className="w-full bg-white text-purple-700 hover:bg-gray-100 py-2 rounded text-sm font-medium"
@@ -835,17 +909,19 @@ function Dashboard() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Available Plans */}
-                  <h3 className="text-2xl font-bold mb-4">Available Subscription Plans</h3>
+                  <h3 className="text-2xl font-bold mb-4">
+                    Available Subscription Plans
+                  </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
                     {pricingData.plans.map((plan) => (
                       <div
                         key={plan.id}
                         className={`${
                           plan.current
-                            ? 'bg-gradient-to-b from-purple-700 to-purple-900'
-                            : 'bg-gray-800'
+                            ? "bg-gradient-to-b from-purple-700 to-purple-900"
+                            : "bg-gray-800"
                         } rounded-lg overflow-hidden relative`}
                       >
                         {plan.current && (
@@ -854,14 +930,16 @@ function Dashboard() {
                           </div>
                         )}
                         <div className="p-6">
-                          <h4 className="text-xl font-bold mb-2">{plan.name}</h4>
+                          <h4 className="text-xl font-bold mb-2">
+                            {plan.name}
+                          </h4>
                           <p className="text-3xl font-bold mb-4">
                             ${plan.price}
                             <span className="text-sm font-normal">/month</span>
                           </p>
                           <p
                             className={`text-sm ${
-                              plan.current ? 'text-purple-200' : 'text-gray-300'
+                              plan.current ? "text-purple-200" : "text-gray-300"
                             } mb-6`}
                           >
                             {plan.description}
@@ -870,15 +948,26 @@ function Dashboard() {
                             {plan.features.map((feature, index) => {
                               // Example check for "API access" (if needed):
                               const isIncluded =
-                                !feature.includes('API access') || plan.id === 'enterprise';
+                                !feature.includes("API access") ||
+                                plan.id === "enterprise";
                               return (
                                 <li key={index} className="flex items-start">
                                   {isIncluded ? (
-                                    <Check size={18} className="text-green-400 mr-2 mt-0.5" />
+                                    <Check
+                                      size={18}
+                                      className="text-green-400 mr-2 mt-0.5"
+                                    />
                                   ) : (
-                                    <X size={18} className="text-red-400 mr-2 mt-0.5" />
+                                    <X
+                                      size={18}
+                                      className="text-red-400 mr-2 mt-0.5"
+                                    />
                                   )}
-                                  <span className={!isIncluded ? 'text-gray-400' : ''}>
+                                  <span
+                                    className={
+                                      !isIncluded ? "text-gray-400" : ""
+                                    }
+                                  >
                                     {feature}
                                   </span>
                                 </li>
@@ -898,13 +987,15 @@ function Dashboard() {
                           ) : (
                             <button
                               className={`w-full ${
-                                plan.id === 'enterprise'
-                                  ? 'bg-purple-600 hover:bg-purple-700'
-                                  : 'bg-gray-700 hover:bg-gray-600'
+                                plan.id === "enterprise"
+                                  ? "bg-purple-600 hover:bg-purple-700"
+                                  : "bg-gray-700 hover:bg-gray-600"
                               } py-3 rounded text-sm font-medium`}
                               onClick={() => handleSelectPlan(plan)}
                             >
-                              {plan.id === 'enterprise' ? 'Upgrade' : 'Choose Plan'}
+                              {plan.id === "enterprise"
+                                ? "Upgrade"
+                                : "Choose Plan"}
                             </button>
                           )}
                         </div>
@@ -916,10 +1007,13 @@ function Dashboard() {
                   <div className="bg-gradient-to-r from-blue-700 to-purple-700 rounded-lg p-6">
                     <div className="flex flex-col md:flex-row justify-between items-center">
                       <div>
-                        <h3 className="text-xl font-bold mb-2">Need a Custom Solution?</h3>
+                        <h3 className="text-xl font-bold mb-2">
+                          Need a Custom Solution?
+                        </h3>
                         <p className="max-w-2xl">
-                          We offer tailored enterprise solutions for organizations with specific
-                          requirements. Our team will work with you to create a custom package that
+                          We offer tailored enterprise solutions for
+                          organizations with specific requirements. Our team
+                          will work with you to create a custom package that
                           fits your needs.
                         </p>
                       </div>
@@ -932,18 +1026,20 @@ function Dashboard() {
               </>
             )}
 
-            {currentPage === 'interview-maker' && (
+            {currentPage === "interview-maker" && (
               <div className="min-h-screen bg-gray-900 text-white p-8">
                 <div className="flex justify-end mb-8">
                   <button
-                    onClick={() => navigate('/post-job')}
+                    onClick={() => navigate("/post-job")}
                     className="flex items-center gap-2 px-4 py-2 bg-[#1A1528] text-white border border-gray-700 rounded-lg hover:bg-[#2A2538] transition-colors"
                   >
                     <PlusCircle size={20} /> Post New Job
                   </button>
                 </div>
                 <div className="max-w-7xl mx-auto">
-                  <h1 className="text-4xl font-bold mb-8">Company Posted Jobs</h1>
+                  <h1 className="text-4xl font-bold mb-8">
+                    Company Posted Jobs
+                  </h1>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {jobs.length > 0 ? (
                       jobs.map((job) => (
@@ -988,17 +1084,23 @@ function Dashboard() {
                     ) : (
                       <div className="col-span-3 text-center py-12">
                         <div className="mb-4">
-                          <Briefcase size={48} className="mx-auto text-gray-500" />
+                          <Briefcase
+                            size={48}
+                            className="mx-auto text-gray-500"
+                          />
                         </div>
-                        <h3 className="text-xl font-medium mb-2">No jobs found</h3>
+                        <h3 className="text-xl font-medium mb-2">
+                          No jobs found
+                        </h3>
                         <p className="text-gray-400">
                           There are currently no jobs posted by your company.
                         </p>
                         <button
-                          onClick={() => navigate('/post-job')}
+                          onClick={() => navigate("/post-job")}
                           className="mt-4 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md inline-flex items-center"
                         >
-                          <PlusCircle size={16} className="mr-2" /> Post a New Job
+                          <PlusCircle size={16} className="mr-2" /> Post a New
+                          Job
                         </button>
                       </div>
                     )}
@@ -1011,10 +1113,10 @@ function Dashboard() {
       </main>
 
       {/* Subscription Panel - Only visible on home page */}
-      {currentPage === 'home' && (
+      {currentPage === "home" && (
         <div
           className={`fixed bottom-0 left-0 right-0 bg-gray-800 transition-all duration-300 ${
-            isSubscriptionExpanded ? 'h-64' : 'h-16'
+            isSubscriptionExpanded ? "h-64" : "h-16"
           }`}
         >
           <div className="flex items-center justify-between p-4 border-b border-gray-700">
@@ -1023,20 +1125,24 @@ function Dashboard() {
                 onClick={toggleSubscription}
                 className="mr-4 bg-gray-700 hover:bg-gray-600 p-2 rounded-full"
               >
-                {isSubscriptionExpanded ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                {isSubscriptionExpanded ? (
+                  <ChevronDown size={20} />
+                ) : (
+                  <ChevronUp size={20} />
+                )}
               </button>
               <div>
                 <p className="font-medium">
-                  Current Plan:{' '}
+                  Current Plan:{" "}
                   <span className="text-purple-400">
-                    {currentPlan ? currentPlan.name : 'No Plan'}
+                    {currentPlan ? currentPlan.name : "No Plan"}
                   </span>
                 </p>
               </div>
             </div>
             <button
               className="bg-purple-600 hover:bg-purple-700 px-4 py-1 rounded text-sm"
-              onClick={() => navigateTo('packages')}
+              onClick={() => navigateTo("packages")}
             >
               Upgrade Plan
             </button>
@@ -1060,7 +1166,9 @@ function Dashboard() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-300">Interviews Conducted</p>
+                    <p className="text-sm text-gray-300">
+                      Interviews Conducted
+                    </p>
                     <div className="w-full bg-gray-600 rounded-full h-2.5">
                       <div
                         className="bg-blue-500 h-2.5 rounded-full"
@@ -1068,7 +1176,8 @@ function Dashboard() {
                       ></div>
                     </div>
                     <p className="text-xs text-right mt-1">
-                      {interviewsUsed} / {currentPlan ? currentPlan.interviews : 0}
+                      {interviewsUsed} /{" "}
+                      {currentPlan ? currentPlan.interviews : 0}
                     </p>
                   </div>
                 </div>
@@ -1078,10 +1187,17 @@ function Dashboard() {
                 <h3 className="font-bold mb-2">Available Plans</h3>
                 <div className="space-y-2">
                   {pricingData.plans.map((plan) => (
-                    <div key={plan.id} className="flex justify-between items-center">
+                    <div
+                      key={plan.id}
+                      className="flex justify-between items-center"
+                    >
                       <p className="text-sm">{plan.name}</p>
-                      <p className={`text-sm font-bold ${plan.current ? 'text-purple-400' : ''}`}>
-                        ${plan.price}/mo {plan.current ? '(Current)' : ''}
+                      <p
+                        className={`text-sm font-bold ${
+                          plan.current ? "text-purple-400" : ""
+                        }`}
+                      >
+                        ${plan.price}/mo {plan.current ? "(Current)" : ""}
                       </p>
                     </div>
                   ))}
@@ -1095,7 +1211,7 @@ function Dashboard() {
                 </p>
                 <button
                   className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded text-sm"
-                  onClick={() => navigateTo('packages')}
+                  onClick={() => navigateTo("packages")}
                 >
                   View Options
                 </button>
