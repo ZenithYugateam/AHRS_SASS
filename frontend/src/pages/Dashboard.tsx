@@ -18,6 +18,9 @@ import {
   MapPin,
   DollarSign,
   LogOut,
+  ToggleLeft,
+  Trash,
+  ToggleRight,
 } from "lucide-react";
 import axios from "axios";
 import PaymentModal from "../components/StripePayment";
@@ -87,6 +90,7 @@ interface PricingData {
 
 // Define job type
 interface Job {
+  status: string;
   job_id: string;
   title?: string;
   description?: string;
@@ -140,6 +144,7 @@ function Dashboard() {
   const [totalInterviews, setTotalInterviews] = useState<number>(0);
   const [totalParticipants, setTotalParticipants] = useState<number>(0);
   const [totalQualified, setTotalQualified] = useState<number>(0);
+  const [jobStatuses, setJobStatuses] = useState<{ [key: string]: string }>({});
 
   // Calculate price based on token amount (example rate: $0.15 per token)
   useEffect(() => {
@@ -237,6 +242,18 @@ function Dashboard() {
     } finally {
       setIsLoading(false);
     }
+  };
+  //Job active and delete
+  const handleToggleJobStatus = (jobId: string) => {
+    setJobStatuses((prevStatuses) => ({
+      ...prevStatuses,
+      [jobId]: prevStatuses[jobId] === "active" ? "inactive" : "active",
+    }));
+  };
+
+  // Delete Job  Call
+  const handleDeleteJob = (jobId: string) => {
+    setJobs((prevJobs) => prevJobs.filter((job) => job.job_id !== jobId));
   };
 
   const fetchCompanyJobs = async () => {
@@ -1047,13 +1064,50 @@ function Dashboard() {
                           key={job.job_id}
                           className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-all duration-300"
                         >
-                          <div className="flex items-center mb-4">
-                            <Briefcase className="mr-2" />
-                            <h2 className="text-xl font-bold">{job.title}</h2>
+                          <div className="flex justify-between items-center mb-4">
+                            <div className="flex items-center">
+                              <Briefcase className="mr-2" />
+                              <h2 className="text-xl font-bold">{job.title}</h2>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              {/* Toggle Button for Active/Inactive */}
+                              <button
+                                onClick={() =>
+                                  handleToggleJobStatus(job.job_id)
+                                }
+                                className={`flex items-center px-3 py-1 rounded-full transition-colors ${
+                                  jobStatuses[job.job_id] === "active"
+                                    ? "bg-green-600"
+                                    : "bg-red-600"
+                                }`}
+                              >
+                                {jobStatuses[job.job_id] === "active" ? (
+                                  <>
+                                    <ToggleRight size={18} className="mr-1" />{" "}
+                                    Active
+                                  </>
+                                ) : (
+                                  <>
+                                    <ToggleLeft size={18} className="mr-1" />{" "}
+                                    Inactive
+                                  </>
+                                )}
+                              </button>
+
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => handleDeleteJob(job.job_id)}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <Trash size={20} />
+                              </button>
+                            </div>
                           </div>
+
                           <p className="text-gray-300 mb-4 line-clamp-3">
                             {job.description || "No description available."}
                           </p>
+
                           <div className="flex flex-wrap gap-2 mb-4">
                             {job.experience && (
                               <span className="bg-gray-700 text-sm px-3 py-1 rounded-full">
@@ -1073,6 +1127,7 @@ function Dashboard() {
                               </div>
                             )}
                           </div>
+
                           <button
                             onClick={() => handleApply(job)}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition-colors"
