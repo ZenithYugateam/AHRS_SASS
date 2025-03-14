@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { 
-  ArrowLeft, 
-  FileJson, 
-  FileSpreadsheet, 
-  Download, 
-  Home, 
-  Package, 
-  Mic, 
-  User, 
-  ChevronDown, 
-  FileText, 
-  CheckCircle, 
-  AlertTriangle 
+import {
+  ArrowLeft,
+  FileJson,
+  FileSpreadsheet,
+  Download,
+  Home,
+  Package,
+  Mic,
+  User,
+  ChevronDown,
+  FileText,
+  CheckCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { Bar, Pie, Radar } from 'react-chartjs-2';
 import html2canvas from 'html2canvas';
@@ -29,7 +29,7 @@ import {
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
 } from 'chart.js';
 
 ChartJS.register(
@@ -46,9 +46,9 @@ ChartJS.register(
 );
 
 // --- Interfaces ---
-// The interview response payload from the API:
 interface ResponseItem {
   questionId: number | string;
+  text?: string;
   answer: string;
   answerValidation?: {
     evaluation: string;
@@ -66,7 +66,6 @@ interface InterviewResponse {
   submittedAt: string;
 }
 
-// We may also have candidate details passed in from router state.
 interface Candidate {
   id?: string;
   candidateId?: string;
@@ -110,7 +109,7 @@ function NavLink({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-// --- PerformanceSummary Component (Dynamic) ---
+// --- PerformanceSummary Component ---
 interface PerformanceSummaryProps {
   totalValidation: number;
   totalDynamic: number;
@@ -118,7 +117,12 @@ interface PerformanceSummaryProps {
   incorrect: number;
 }
 
-function PerformanceSummary({ totalValidation, totalDynamic, correct, incorrect }: PerformanceSummaryProps) {
+function PerformanceSummary({
+  totalValidation,
+  totalDynamic,
+  correct,
+  incorrect,
+}: PerformanceSummaryProps) {
   return (
     <section>
       <h2 className="text-xl text-purple-400 mb-4 flex items-center gap-2">
@@ -127,11 +131,11 @@ function PerformanceSummary({ totalValidation, totalDynamic, correct, incorrect 
       </h2>
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-[#12121a] p-6 rounded-lg shadow-lg border border-gray-800">
-          <div className="text-gray-400 mb-2">Total Validation Score</div>
+          <div className="text-gray-400 mb-2">Validation Score</div>
           <div className="text-2xl font-bold text-red-500">{totalValidation}/100</div>
         </div>
         <div className="bg-[#12121a] p-6 rounded-lg shadow-lg border border-gray-800">
-          <div className="text-gray-400 mb-2">Total Dynamic Accuracy</div>
+          <div className="text-gray-400 mb-2">Dynamic Accuracy</div>
           <div className="text-2xl font-bold text-red-500">{totalDynamic}%</div>
         </div>
         <div className="bg-[#12121a] p-6 rounded-lg shadow-lg border border-gray-800">
@@ -159,19 +163,25 @@ function QuestionDetails({ question }: { question: ResponseItem }) {
 
   return (
     <div className="bg-[#12121a] rounded-lg mb-3 border border-gray-800 overflow-hidden">
-      <div 
+      <div
         className="p-4 cursor-pointer hover:bg-[#1a1a23] transition-colors flex items-center justify-between"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center gap-3">
           <FileText className="w-5 h-5 text-purple-400" />
-          <span className="text-white">Question {question.questionId}: {question.text}</span>
+          <span className="text-white">
+            Question {question.questionId}: {question.text}
+          </span>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-red-500">
             {question.answerValidation ? `${question.answerValidation.score}/100` : 'N/A'}
           </span>
-          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          <ChevronDown
+            className={`w-5 h-5 text-gray-400 transition-transform ${
+              isExpanded ? 'rotate-180' : ''
+            }`}
+          />
         </div>
       </div>
 
@@ -197,19 +207,13 @@ function QuestionDetails({ question }: { question: ResponseItem }) {
           <div className="space-y-4">
             <div>
               <div className="text-sm text-gray-400 mb-2">Candidate's Answer:</div>
-              <div className="bg-[#12121a] p-3 rounded-lg text-gray-300">
-                {question.answer}
-              </div>
+              <div className="bg-[#12121a] p-3 rounded-lg text-gray-300">{question.answer}</div>
             </div>
 
             <div>
               <div className="text-sm text-gray-400 mb-2">Video Response:</div>
               {question.videoUrl ? (
-                <video 
-                  className="w-full rounded-lg"
-                  controls
-                  src={question.videoUrl}
-                />
+                <video className="w-full rounded-lg" controls src={question.videoUrl} />
               ) : (
                 <div className="text-gray-400">No video available</div>
               )}
@@ -229,7 +233,6 @@ function QuestionDetails({ question }: { question: ResponseItem }) {
     </div>
   );
 }
-
 
 function DetailedAnalysis({ questions }: { questions: ResponseItem[] }) {
   return (
@@ -251,7 +254,6 @@ function DetailedAnalysis({ questions }: { questions: ResponseItem[] }) {
 const CandidateAnalysisPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  // Candidate details (e.g., candidateId and jobId) passed via router state or query params
   const candidate: Candidate | undefined = location.state?.candidate;
   const [interviewData, setInterviewData] = useState<InterviewResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -300,22 +302,28 @@ const CandidateAnalysisPage: React.FC = () => {
 
   // Process responses if available
   const responses: ResponseItem[] = interviewData?.responses || [];
-
-  // Calculate summary metrics
-  const totalValidation = responses.reduce((acc, resp) => 
-    acc + (resp.answerValidation ? resp.answerValidation.score : 0), 0
+  const totalValidation = responses.reduce(
+    (acc, resp) => acc + (resp.answerValidation ? resp.answerValidation.score : 0),
+    0
   );
   const totalDynamic = responses.reduce((acc, resp) => acc + resp.dynamicAccuracy, 0);
-  const correctCount = responses.filter(resp => resp.answerValidation && resp.answerValidation.score >= 50).length;
+  const avgValidation = responses.length ? Number((totalValidation / responses.length).toFixed(1)) : 0;
+  const avgDynamic = responses.length ? Number((totalDynamic / responses.length).toFixed(1)) : 0;
+  const correctCount = responses.filter(
+    (resp) => resp.answerValidation && resp.answerValidation.score >= 50
+  ).length;
   const incorrectCount = responses.length - correctCount;
 
-  // Chart Data (dynamic if responses exist; else fallback static)
+  // Compute candidate status based on average validation score
+  const computedStatus = avgValidation >= 40 ? 'Selected' : 'Rejected';
+
+  // Chart Data (using raw scores for bar chart)
   const barChartData = {
-    labels: responses.map(resp => `Q${resp.questionId}`),
+    labels: responses.map((resp) => `Q${resp.questionId}`),
     datasets: [
       {
         label: 'Validation Score',
-        data: responses.map(resp => (resp.answerValidation ? resp.answerValidation.score : 0)),
+        data: responses.map((resp) => (resp.answerValidation ? resp.answerValidation.score : 0)),
         backgroundColor: 'rgba(147, 51, 234, 0.5)',
         borderColor: 'rgba(147, 51, 234, 1)',
         borderWidth: 1,
@@ -341,8 +349,6 @@ const CandidateAnalysisPage: React.FC = () => {
     ],
   };
 
-  const avgValidation = responses.length ? Number((totalValidation / responses.length).toFixed(1)) : 0;
-  const avgDynamic = responses.length ? Number((totalDynamic / responses.length).toFixed(1)) : 0;
   const radarChartData = {
     labels: ['Avg Validation', 'Avg Dynamic Accuracy'],
     datasets: [
@@ -376,7 +382,12 @@ const CandidateAnalysisPage: React.FC = () => {
     responsive: true,
     plugins: { legend: { position: 'top' as const, labels: { color: '#fff' } } },
     scales: {
-      r: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.1)' }, pointLabels: { color: '#fff' }, ticks: { color: '#fff' } },
+      r: {
+        beginAtZero: true,
+        grid: { color: 'rgba(255,255,255,0.1)' },
+        pointLabels: { color: '#fff' },
+        ticks: { color: '#fff' },
+      },
     },
   };
 
@@ -404,7 +415,7 @@ const CandidateAnalysisPage: React.FC = () => {
     <div className="min-h-screen bg-[#0a0a0f] text-white">
       <Navbar />
       <div className="p-6">
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="flex items-center text-purple-400 hover:text-purple-300 mb-6"
         >
@@ -427,8 +438,14 @@ const CandidateAnalysisPage: React.FC = () => {
               <div className="text-3xl font-bold text-red-500">
                 {responses.length ? avgValidation : 0}/100
               </div>
-              <span className={`inline-block px-3 py-1 rounded-full text-sm mt-2 ${candidate.status === 'Selected' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                {candidate.status}
+              <span
+                className={`inline-block px-3 py-1 rounded-full text-sm mt-2 ${
+                  computedStatus === 'Selected'
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-red-500/20 text-red-400'
+                }`}
+              >
+                {computedStatus}
               </span>
             </div>
           </div>
@@ -442,7 +459,7 @@ const CandidateAnalysisPage: React.FC = () => {
               <FileJson className="w-4 h-4 mr-2" />
               Export JSON
             </button>
-            <button 
+            <button
               onClick={exportToPDF}
               className="flex items-center px-4 py-2 bg-[#1a1a23] hover:bg-[#22222c] rounded-md"
             >
@@ -453,9 +470,9 @@ const CandidateAnalysisPage: React.FC = () => {
         </div>
 
         <div ref={chartRef} className="space-y-8">
-          <PerformanceSummary 
-            totalValidation={totalValidation}
-            totalDynamic={totalDynamic}
+          <PerformanceSummary
+            totalValidation={avgValidation}
+            totalDynamic={avgDynamic}
             correct={correctCount}
             incorrect={incorrectCount}
           />
@@ -485,7 +502,9 @@ const CandidateAnalysisPage: React.FC = () => {
           )}
 
           <div className="mt-8">
-            <p><strong>Submitted At:</strong> {interviewData?.submittedAt || 'N/A'}</p>
+            <p>
+              <strong>Submitted At:</strong> {interviewData?.submittedAt || 'N/A'}
+            </p>
           </div>
         </div>
       </div>

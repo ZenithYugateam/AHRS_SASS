@@ -4,7 +4,6 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 
 // --- Navbar Component ---
-// --- Navbar Component ---
 function Navbar() {
   return (
     <nav className="bg-[#12121a] border-b border-gray-800 px-6 py-3">
@@ -156,11 +155,11 @@ const CandidateDetailsPage: React.FC = () => {
                   <div className="text-gray-300">{candidate.jobId}</div>
                   <div>
                     <span className={`inline-block px-3 py-1 rounded-full text-sm ${
-                      candidate.status === 1 
+                      candidate.status === 10 
                         ? 'bg-green-500/20 text-green-400'
                         : 'bg-red-500/20 text-red-400'
                     }`}>
-                      {candidate.status === 1 ? 'Selected' : 'Rejected'}
+                      {candidate.status === 10 ? 'Selected' : 'Rejected'}
                     </span>
                   </div>
                   <div className="text-gray-300">{candidate.title}</div>
