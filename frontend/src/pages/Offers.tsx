@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { User, Briefcase, Calendar, Building, Clock, CheckCircle, XCircle, AlertCircle, ChevronDown } from 'lucide-react';
+import { 
+  User, 
+  Briefcase, 
+  Calendar, 
+  Building, 
+  Clock, 
+  CheckCircle, 
+  XCircle, 
+  AlertCircle, 
+  ChevronDown 
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // Status badge component
@@ -43,6 +53,7 @@ function Offers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [username, setUsername] = useState("User");
+  const [candidateId, setCandidateId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("");
@@ -51,15 +62,17 @@ function Offers() {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
+  // Retrieve user data and candidate email from session storage
   useEffect(() => {
     const storedUserData = sessionStorage.getItem("user");
     if (storedUserData) {
       try {
         const userData = JSON.parse(storedUserData);
         setUsername(userData.username || "User");
-        const candidateId = userData.email;
-        if (!candidateId) throw new Error("Candidate ID (email) not found.");
-        fetchOffers(candidateId);
+        const candidateEmail = userData.email;
+        if (!candidateEmail) throw new Error("Candidate ID (email) not found.");
+        setCandidateId(candidateEmail);
+        fetchOffers(candidateEmail);
       } catch (err) {
         console.error("Error parsing user data:", err);
         setError("User data is corrupted.");
@@ -71,29 +84,63 @@ function Offers() {
     }
   }, []);
 
-  const fetchOffers = async (candidateId: string) => {
+  // Fetch initial offers from pass_or_fail API and update them with candidate status from getnightstatus API
+  const fetchOffers = async (candidateEmail: string) => {
     try {
       const response = await axios.get(
         `https://8psobgwfh2.execute-api.us-east-1.amazonaws.com/default/pass_or_fail`,
-        { params: { candidateId } }
+        { params: { candidateId: candidateEmail } }
       );
-      console.log("API Response:", response.data); // Log the response for debugging
+      console.log("API Response:", response.data);
 
       // Transform the API response to match expected structure
       const fetchedOffers = response.data.candidateJobs.map((job: any) => {
-        const candidate = job.candidateList.find((c: any) => c.candidateId === candidateId);
+        const candidate = job.candidateList.find((c: any) => c.candidateId === candidateEmail);
         return {
           job_id: job.job_id,
           title: job.title || "Untitled Job",
-          companyName: job.company_id, // Placeholder for companyName
+          companyName: job.company_id, // using company_id as company identifier
           description: job.description || "No description available",
           date: job.posted_on || "",
           status: candidate ? candidate.status : null,
         };
       });
 
-      setOffers(fetchedOffers);
-      setFilteredOffers(fetchedOffers);
+      // Update offers with candidate status from the getnightstatus API.
+      const updatedOffers = await Promise.all(
+        fetchedOffers.map(async (offer) => {
+          try {
+            const statusResponse = await axios.get(
+              "https://ho5dvgc5u2.execute-api.us-east-1.amazonaws.com/default/getnightstatus",
+              {
+                params: {
+                  candidate_id: candidateEmail,
+                  job_id: offer.job_id,
+                },
+              }
+            );
+            const data = statusResponse.data;
+            // Expect the lambda to return { candidateId, jobId, managerMessage, status, timestamp }
+            if (data && data.status !== undefined && data.status !== null) {
+              return {
+                ...offer,
+                status: data.status,
+                managerMessage: data.managerMessage || offer.managerMessage,
+              };
+            }
+            return offer;
+          } catch (error) {
+            if (error.response && error.response.status === 404) {
+              console.log(`No status update found for job_id ${offer.job_id}.`);
+            } else {
+              console.error(`Error fetching status for job_id ${offer.job_id}:`, error);
+            }
+            return offer;
+          }
+        })
+      );
+      setOffers(updatedOffers);
+      setFilteredOffers(updatedOffers);
     } catch (err) {
       console.error("Error fetching offers:", err);
       setError("Failed to fetch offers. Please try again later.");
@@ -102,7 +149,7 @@ function Offers() {
     }
   };
 
-  // Filter and sort offers
+  // Filter and sort offers based on search, status, and company
   useEffect(() => {
     let filtered = [...offers];
 
@@ -117,8 +164,8 @@ function Offers() {
     if (selectedStatus) {
       filtered = filtered.filter((offer) => {
         if (selectedStatus === "Interview Selected") return offer.status === 10;
-        if (selectedStatus === "Not Selected") return offer.status === 5;
-        if (selectedStatus === "Pending") return offer.status !== 5 && offer.status !== 10;
+        if (selectedStatus === "Not Selected") return offer.status === 0;
+        if (selectedStatus === "Pending") return offer.status !== 10 && offer.status !== 0;
         return true;
       });
     }
@@ -149,22 +196,19 @@ function Offers() {
 
   const toggleJobsDropdown = () => setIsJobsDropdownOpen((prev) => !prev);
   const toggleProfileDropdown = () => setIsProfileDropdownOpen((prev) => !prev);
-
   const goToAppliedJobs = () => {
     setIsJobsDropdownOpen(false);
     navigate("/applied-jobs");
   };
-
   const goToOffers = () => {
     setIsJobsDropdownOpen(false);
     navigate("/offers");
   };
-
   const goToHome = () => {
     navigate('/candidate-dashboard');
   };
 
-  // Loading shadow animation variant
+  // Loading card animation variant
   const loadingCardVariants = {
     animate: {
       boxShadow: [
@@ -337,14 +381,15 @@ function Offers() {
               {filteredOffers.map((offer, index) => {
                 let statusText = "";
                 let badgeType: 'success' | 'rejected' | 'pending' = 'pending';
-                if (offer.status === 5) {
-                  statusText = "Not Selected";
-                  badgeType = "rejected";
-                } else if (offer.status === 10) {
+                if (offer.status === 10) {
                   statusText = "Interview Selected";
                   badgeType = "success";
+                } else if (offer.status === 0) {
+                  statusText = "Not Selected";
+                  badgeType = "rejected";
                 } else {
                   statusText = "Pending";
+                  badgeType = "pending";
                 }
 
                 return (
@@ -375,22 +420,18 @@ function Offers() {
                         </div>
                       </div>
                       <div className="flex flex-col gap-2 pt-4 border-t border-gray-700">
-                        {offer.status === 10 && (
-                          <button
-                            className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                            onClick={() => navigate('/interview-details', { state: { offer } })}
-                          >
-                            View Interview Details
-                          </button>
-                        )}
-                        {offer.status === 5 && (
+                        {offer.status === 10 ? (
+                          <div className="w-full px-4 py-2 bg-green-600 text-white rounded text-center">
+                            Viewed and approved by the company. Info will be updated soon.
+                          </div>
+                        ) : offer.status === 0 ? (
                           <button
                             className="w-full px-4 py-2 bg-gray-500 text-white rounded cursor-not-allowed"
                             disabled
                           >
                             No Further Action
                           </button>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   </motion.div>
