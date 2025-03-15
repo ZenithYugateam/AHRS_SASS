@@ -4,6 +4,7 @@ import type { FormData } from '../types';
 export const useFormData = () => {
   const [formData, setFormData] = useState<FormData>({
     companyProfile: {
+      companyId: JSON.parse(sessionStorage.getItem('user') || '{}').username, // Add companyId if needed as the primary key
       name: '',
       logo: '',
       industry: '',
@@ -45,10 +46,15 @@ export const useFormData = () => {
         [field]: value
       }
     }));
-    triggerAutoSave();
+    // triggerAutoSave();
   };
 
-  const handleAddTag = (section: string, field: string, value: string, inputSetter: React.Dispatch<React.SetStateAction<string>>) => {
+  const handleAddTag = (
+    section: string,
+    field: string,
+    value: string,
+    inputSetter: React.Dispatch<React.SetStateAction<string>>
+  ) => {
     if (value.trim() !== '') {
       setFormData(prevData => ({
         ...prevData,
@@ -58,7 +64,7 @@ export const useFormData = () => {
         }
       }));
       inputSetter('');
-      triggerAutoSave();
+      // triggerAutoSave();
     }
   };
 
@@ -74,7 +80,7 @@ export const useFormData = () => {
         }
       };
     });
-    triggerAutoSave();
+    // triggerAutoSave();
   };
 
   const handleLogoUpload = (file: File) => {
@@ -85,25 +91,52 @@ export const useFormData = () => {
     reader.readAsDataURL(file);
   };
 
-  const triggerAutoSave = () => {
+  const triggerAutoSave = async () => {
     setSaveStatus('Saving...');
     console.log('Saving changes...');
-    
-    // Simulate API call
-    setTimeout(() => {
-      console.log('Changes saved successfully!', formData);
-      setSaveStatus('Changes saved');
-      
-      setTimeout(() => {
-        setSaveStatus('');
-      }, 2000);
-    }, 1000);
+
+    try {
+      const response = await fetch(
+        'https://a3ynn4mrji.execute-api.us-east-1.amazonaws.com/default/post_company_profile_details',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        }
+      );
+
+      if (response.ok) {
+        console.log('Changes saved successfully!', formData);
+        setSaveStatus('Changes saved');
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to save changes:', errorData);
+        setSaveStatus('Failed to save changes');
+      }
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      setSaveStatus('Error saving changes');
+    }
+
+    setTimeout(() => setSaveStatus(''), 2000);
   };
 
-  const handleManualSave = () => {
+  const handleManualSave = async () => {
     console.log('Manual save triggered');
+    
+    // Set companyId directly from sessionStorage before saving
+    setFormData(prevData => ({
+      ...prevData,
+      companyProfile: {
+        ...prevData.companyProfile,
+        companyId: JSON.parse(sessionStorage.getItem('user') || '{}').username || ''
+      }
+    }));
+
     console.log('Current form data:', formData);
-    triggerAutoSave();
+    await triggerAutoSave(); // Call the actual API on manual save
     setIsEditing(false);
   };
 

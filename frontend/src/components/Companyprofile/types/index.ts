@@ -6,6 +6,7 @@ export interface SocialMedia {
 }
 
 export interface CompanyProfile {
+  companyId : string;
   name: string;
   logo: string;
   industry: string;
