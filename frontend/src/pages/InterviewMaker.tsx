@@ -222,9 +222,10 @@ Return only valid JSON.`;
     setShowPreview(true);
   };
 
-  // Final submission for both flows using the same API endpoint.
-  const finalSubmit = () => {
+  const finalSubmit = async () => {
     setIsSubmitting(true);
+  
+    // Prepare the interview submission payload (formattedData)
     const formattedData = {
       job_id: parseInt(formData.job_id),
       company_id: formData.company_id,
@@ -243,29 +244,50 @@ Return only valid JSON.`;
       })),
       total_time: parseInt(formData.total_time)
     };
+  
     console.log('Submitting interview data:', formattedData);
-    fetch('https://0x9m8akkg9.execute-api.us-east-1.amazonaws.com/qa/set_questions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formattedData)
-    })
-      .then(response => response.json())
-      .then(data => {
-        console.log('API response:', data);
-        setIsSuccess(true);
-        setTimeout(() => {
-          setIsSuccess(false);
-          setShowPreview(false);
-          setInterviewType('selection');
-        }, 3000);
-      })
-      .catch(error => {
-        console.error('Error submitting interview:', error);
-      })
-      .finally(() => {
-        setIsSubmitting(false);
-      });
+  
+    try {
+      // Submit the interview details
+      const response = await fetch(
+        "https://0x9m8akkg9.execute-api.us-east-1.amazonaws.com/qa/set_questions",
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formattedData)
+        }
+      );
+      const data = await response.json();
+      console.log('Interview submission API response:', data);
+  
+      // Prepare token deduction payload.
+      // Ensure that formData.email is populated with the user's email.
+      const tokenPayload = {
+        email: formData.company_id,          // Must be set from your session or job state
+        total_time: formData.total_time // Deduct tokens equal to total interview time
+      };
+  
+      // Call the token deduction API using Axios
+      const tokenResponse = await axios.post(
+        "https://3j2kgfl7ph.execute-api.us-east-1.amazonaws.com/default/tokenleft",
+        tokenPayload
+      );
+      console.log("Tokens updated:", tokenResponse.data);
+  
+      setIsSuccess(true);
+      setTimeout(() => {
+        setIsSuccess(false);
+        setShowPreview(false);
+        setInterviewType('selection');
+      }, 3000);
+    } catch (error) {
+      console.error('Error submitting interview or updating tokens:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+  
+  
 
   // --- Render Section ---
 
@@ -358,80 +380,165 @@ Return only valid JSON.`;
     );
   }
 
-  // AI Interview Form
   if (interviewType === 'ai') {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-6">
         <button onClick={goBack} className="flex items-center text-gray-300 hover:text-white mb-6">
           <ArrowLeft size={20} className="mr-2" /> Back to selection
         </button>
-        {/* Display prepopulated job details */}
         <JobDetails />
         <div className="max-w-3xl mx-auto bg-gray-800 rounded-lg p-8 shadow-lg">
           <h1 className="text-2xl font-bold mb-6 flex items-center">
             <Zap size={24} className="text-purple-400 mr-2" /> Create AI Interview
           </h1>
           <form onSubmit={handlePreview} className="space-y-6">
-            {/* Common Job Details - You can choose to make these read-only */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <Briefcase size={16} className="mr-2" /> Job ID
                 </label>
-                <input type="number" name="job_id" value={formData.job_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.job_id} />
+                <input
+                  type="number"
+                  name="job_id"
+                  value={formData.job_id}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                  required
+                  readOnly={!!formData.job_id}
+                />
               </div>
               <div>
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <Building size={16} className="mr-2" /> Company ID
                 </label>
-                <input type="text" name="company_id" value={formData.company_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.company_id} />
+                <input
+                  type="text"
+                  name="company_id"
+                  value={formData.company_id}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                  required
+                  readOnly={!!formData.company_id}
+                />
               </div>
             </div>
             <div>
               <label className="block text-gray-300 mb-2 flex items-center">
                 <Award size={16} className="mr-2" /> Job Title
               </label>
-              <input type="text" name="job_title" value={formData.job_title} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.job_title} />
+              <input
+                type="text"
+                name="job_title"
+                value={formData.job_title}
+                onChange={handleInputChange}
+                className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                required
+                readOnly={!!formData.job_title}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <Award size={16} className="mr-2" /> Experience Level
                 </label>
-                <input type="text" name="experience" value={formData.experience} onChange={handleInputChange} placeholder="e.g., 3 years, Entry Level, Senior" className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required />
+                <input
+                  type="text"
+                  name="experience"
+                  value={formData.experience}
+                  onChange={handleInputChange}
+                  placeholder="e.g., 3 years, Entry Level, Senior"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                  required
+                />
               </div>
               <div>
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <FileText size={16} className="mr-2" /> Technical Skills
                 </label>
-                <input type="text" name="technical_skills" value={formData.technical_skills} onChange={handleInputChange} placeholder="e.g., React, Node.js, AWS" className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" />
+                <input
+                  type="text"
+                  name="technical_skills"
+                  value={formData.technical_skills}
+                  onChange={handleInputChange}
+                  placeholder="e.g., React, Node.js, AWS"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                />
               </div>
             </div>
             <div>
               <label className="block text-gray-300 mb-2 flex items-center">
                 <FileText size={16} className="mr-2" /> Soft Skills
               </label>
-              <input type="text" name="soft_skills" value={formData.soft_skills} onChange={handleInputChange} placeholder="e.g., communication, leadership" className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" />
+              <input
+                type="text"
+                name="soft_skills"
+                value={formData.soft_skills}
+                onChange={handleInputChange}
+                placeholder="e.g., communication, leadership"
+                className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+              />
             </div>
-            {/* Number of Questions & Marks */}
+            {/* New Total Interview Time field */}
+            <div>
+              <label className="block text-gray-300 mb-2 flex items-center">
+                <Clock size={16} className="mr-2" /> Total Interview Time (minutes)
+              </label>
+              <input
+                type="number"
+                name="total_time"
+                value={formData.total_time}
+                onChange={handleInputChange}
+                min="5"
+                max="120"
+                className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                required
+              />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-gray-300 mb-2">Number of Questions</label>
-                <input type="number" name="num_questions" value={formData.num_questions} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" min="1" required />
+                <input
+                  type="number"
+                  name="num_questions"
+                  value={formData.num_questions}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                  min="1"
+                  required
+                />
               </div>
               <div>
                 <label className="block text-gray-300 mb-2">
-                  Marks per Question <span className="text-gray-400 text-sm ml-2">(AI will generate questions based on these marks)</span>
+                  Marks per Question{" "}
+                  <span className="text-gray-400 text-sm ml-2">
+                    (AI will generate questions based on these marks)
+                  </span>
                 </label>
                 {formData.marks.map((mark, index) => (
                   <div key={index} className="flex items-center mb-2">
-                    <input type="number" value={mark} onChange={(e) => handleMarksChange(index, e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" min="1" required />
-                    <button type="button" onClick={() => removeMarksField(index)} className="ml-2 text-red-400 hover:text-red-300" disabled={formData.marks.length <= 1}>
+                    <input
+                      type="number"
+                      value={mark}
+                      onChange={(e) => handleMarksChange(index, e.target.value)}
+                      className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                      min="1"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeMarksField(index)}
+                      className="ml-2 text-red-400 hover:text-red-300"
+                      disabled={formData.marks.length <= 1}
+                    >
                       <Minus size={20} />
                     </button>
                   </div>
                 ))}
-                <button type="button" onClick={addMarksField} className="flex items-center text-purple-400 hover:text-purple-300 mt-2">
+                <button
+                  type="button"
+                  onClick={addMarksField}
+                  className="flex items-center text-purple-400 hover:text-purple-300 mt-2"
+                >
                   <Plus size={16} className="mr-1" /> Add another mark value
                 </button>
                 <div className="mt-2 text-sm text-gray-300">Total Marks: {totalMarks}</div>
@@ -439,15 +546,46 @@ Return only valid JSON.`;
             </div>
             <div>
               <label className="block text-gray-300 mb-2">Job Description</label>
-              <textarea name="job_description" value={formData.job_description} onChange={handleInputChange} rows={4} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required placeholder="Provide a detailed job description..." readOnly={!!formData.job_description}></textarea>
+              <textarea
+                name="job_description"
+                value={formData.job_description}
+                onChange={handleInputChange}
+                rows={4}
+                className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                required
+                placeholder="Provide a detailed job description..."
+                readOnly={!!formData.job_description}
+              ></textarea>
             </div>
             <div className="flex justify-end">
-              <button type="submit" disabled={isSubmitting} className={`bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md font-medium flex items-center ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md font-medium flex items-center ${
+                  isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
+              >
                 {isSubmitting ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Processing...
                   </>
@@ -461,6 +599,8 @@ Return only valid JSON.`;
       </div>
     );
   }
+  
+  
 
   // Custom Interview Form – Manual Q&A entry
   if (interviewType === 'custom') {
