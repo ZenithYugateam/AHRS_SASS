@@ -91,10 +91,11 @@ const CandidateDetailsPage: React.FC = () => {
 
   // Load updated candidates from session storage (if any)
   useEffect(() => {
-    const storedUpdated = sessionStorage.getItem('updatedCandidates');
-    if (storedUpdated) {
-      setUpdatedCandidates(JSON.parse(storedUpdated));
-    }
+           const storedUpdated = localStorage.getItem('updatedCandidates');
+           if (storedUpdated) {
+             setUpdatedCandidates(JSON.parse(storedUpdated));
+                            }
+
   }, []);
 
   // Fetch candidate data once companyId is available
@@ -184,7 +185,7 @@ const CandidateDetailsPage: React.FC = () => {
         // Add the updated candidate to the updatedCandidates list and persist in session storage.
         setUpdatedCandidates((prev) => {
           const newUpdated = [...prev, updatedCandidate];
-          sessionStorage.setItem('updatedCandidates', JSON.stringify(newUpdated));
+         localStorage.setItem('updatedCandidates', JSON.stringify(newUpdated));
           return newUpdated;
         });
         toast.success(`Candidate ${action === "approve" ? "approved" : "rejected"} successfully`);
