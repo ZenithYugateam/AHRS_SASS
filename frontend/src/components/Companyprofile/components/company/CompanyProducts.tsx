@@ -1,74 +1,108 @@
-import React from 'react';
-import { Briefcase } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { Package } from "lucide-react";
 
-interface CompanyBusinessDetailsProps {
+interface CompanyProductsProps {
   formData: any;
   handleInputChange: (section: string, field: string, value: any) => void;
+  handleAddTag: (
+    section: string,
+    field: string,
+    value: string,
+    inputSetter: React.Dispatch<React.SetStateAction<string>>
+  ) => void;
+  handleRemoveTag: (section: string, field: string, index: number) => void;
   isEditing: boolean;
 }
 
-const CompanyBusinessDetails: React.FC<CompanyBusinessDetailsProps> = ({ formData, handleInputChange, isEditing }) => {
-  const businessTypes = ['B2B', 'B2C', 'B2B2C', 'D2C', 'Other'];
-  const revenueRanges = [
-    'Less than $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M',
-    '$100M - $500M', '$500M - $1B', 'More than $1B', 'Prefer not to disclose'
-  ];
+const CompanyProducts: React.FC<CompanyProductsProps> = ({
+  formData,
+  handleInputChange,
+  handleAddTag,
+  handleRemoveTag,
+  isEditing,
+}) => {
+  const [productInput, setProductInput] = useState("");
+  const [products, setProducts] = useState(formData.companyProfile.products || []);
+  const [targetMarket, setTargetMarket] = useState(formData.companyProfile.targetMarket || "");
 
-  const cardStyles = "bg-gradient-to-br from-indigo-500/10 to-purple-500/10 backdrop-blur-sm border border-indigo-500/20 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] hover:shadow-[0_0_20px_rgba(99,102,241,0.15)] transition-all duration-300 hover:border-indigo-500/30";
-  const selectStyles = "w-full bg-black/30 border border-indigo-500/30 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all duration-300 hover:border-indigo-500/50";
+  useEffect(() => {
+    const fetchCompanyDetails = async () => {
+      try {
+        const username = JSON.parse(sessionStorage.getItem("user") || "{}")
+          .username;
+        if (!username) {
+          console.error("No username found in session storage");
+          return;
+        }
+
+        const response = await axios.post(
+          "https://iu2p4xgbt4.execute-api.us-east-1.amazonaws.com/default/get_company_profile_details",
+          { companyId: username }
+        );
+
+        if (response.data && response.data.companyProfile) {
+          setProducts(response.data.companyProfile.products || []);
+          setTargetMarket(response.data.companyProfile.targetMarket || "");
+        }
+      } catch (error) {
+        console.error("Error fetching company profile details:", error);
+      }
+    };
+
+    fetchCompanyDetails();
+  }, []);
+
+  const cardStyles = "bg-gradient-to-br from-indigo-500/10 to-purple-500/10 backdrop-blur-sm border border-indigo-500/20 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300";
+  const inputStyles = "w-full bg-black/30 border border-indigo-500/30 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all duration-300";
+  const tagStyles = "bg-indigo-500/20 border border-indigo-500/30 px-3 py-1 rounded-full text-sm flex items-center hover:bg-indigo-500/30 transition-colors duration-300";
+  const buttonStyles = "bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 px-4 py-3 rounded-r-lg transition-all duration-300 font-medium";
+  const textareaStyles = "w-full bg-black/30 border border-indigo-500/30 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all duration-300";
   const previewTextStyles = "text-lg font-medium text-gray-100";
 
   return (
     <div className="space-y-6">
       <h2 className="text-xl md:text-2xl font-semibold flex items-center text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-500">
-        <Briefcase className="mr-2 h-5 w-5 md:h-6 md:w-6 text-indigo-500" />
-        Business Details
+        <Package className="mr-2 h-5 w-5 md:h-6 md:w-6 text-indigo-500" />
+        Products & Services
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className={`${cardStyles} p-4`}>
-          <label className="block text-sm font-medium mb-2 text-gray-200">Business Type *</label>
-          {isEditing ? (
-            <select
-              className={selectStyles}
-              value={formData.companyProfile.businessType}
-              onChange={(e) => handleInputChange('companyProfile', 'businessType', e.target.value)}
-              required
-            >
-              <option value="">Select business type</option>
-              {businessTypes.map((type) => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-          ) : (
-            <p className={previewTextStyles}>
-              {formData.companyProfile.businessType || 'Not specified'}
-            </p>
-          )}
+      <div className={`${cardStyles} p-4`}>
+        <label className="block text-sm font-medium mb-2 text-gray-200">Products/Services Offered *</label>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {products.map((product: string, index: number) => (
+            <span key={index} className={tagStyles}>
+              {product}
+              {isEditing && (
+                <button
+                  type="button"
+                  className="ml-2 text-indigo-500 hover:text-white"
+                  onClick={() => handleRemoveTag("companyProfile", "products", index)}
+                >
+                  ×
+                </button>
+              )}
+            </span>
+          ))}
         </div>
+      </div>
 
-        <div className={`${cardStyles} p-4`}>
-          <label className="block text-sm font-medium mb-2 text-gray-200">Annual Revenue Range</label>
-          {isEditing ? (
-            <select
-              className={selectStyles}
-              value={formData.companyProfile.revenueRange}
-              onChange={(e) => handleInputChange('companyProfile', 'revenueRange', e.target.value)}
-            >
-              <option value="">Select revenue range</option>
-              {revenueRanges.map((range) => (
-                <option key={range} value={range}>{range}</option>
-              ))}
-            </select>
-          ) : (
-            <p className={previewTextStyles}>
-              {formData.companyProfile.revenueRange || 'Not specified'}
-            </p>
-          )}
-        </div>
+      <div className={`${cardStyles} p-4`}>
+        <label className="block text-sm font-medium mb-2 text-gray-200">Target Market *</label>
+        {isEditing ? (
+          <textarea
+            className={`${textareaStyles} h-24`}
+            value={targetMarket}
+            onChange={(e) => handleInputChange("companyProfile", "targetMarket", e.target.value)}
+            placeholder="Describe your target market"
+            required
+          ></textarea>
+        ) : (
+          <p className={previewTextStyles}>{targetMarket || "Not specified"}</p>
+        )}
       </div>
     </div>
   );
 };
 
-export default CompanyBusinessDetails;
+export default CompanyProducts;

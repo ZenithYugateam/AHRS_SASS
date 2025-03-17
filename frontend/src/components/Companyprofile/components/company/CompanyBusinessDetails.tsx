@@ -1,5 +1,6 @@
-import React from 'react';
-import { Briefcase } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { Briefcase } from "lucide-react";
 
 interface CompanyBusinessDetailsProps {
   formData: any;
@@ -7,15 +8,49 @@ interface CompanyBusinessDetailsProps {
   isEditing: boolean;
 }
 
-const CompanyBusinessDetails: React.FC<CompanyBusinessDetailsProps> = ({ formData, handleInputChange, isEditing }) => {
-  const businessTypes = ['B2B', 'B2C', 'B2B2C', 'D2C', 'Other'];
+const CompanyBusinessDetails: React.FC<CompanyBusinessDetailsProps> = ({
+  formData,
+  handleInputChange,
+  isEditing,
+}) => {
+  const businessTypes = ["B2B", "B2C", "B2B2C", "D2C", "Other"];
   const revenueRanges = [
-    'Less than $1M', '$1M - $10M', '$10M - $50M', '$50M - $100M',
-    '$100M - $500M', '$500M - $1B', 'More than $1B', 'Prefer not to disclose'
+    "Less than $1M", "$1M - $10M", "$10M - $50M", "$50M - $100M",
+    "$100M - $500M", "$500M - $1B", "More than $1B", "Prefer not to disclose"
   ];
 
-  const cardStyles = "bg-gradient-to-br from-indigo-500/10 to-purple-500/10 backdrop-blur-sm border border-indigo-500/20 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.1)] hover:shadow-[0_0_20px_rgba(99,102,241,0.15)] transition-all duration-300 hover:border-indigo-500/30";
-  const selectStyles = "w-full bg-black/30 border border-indigo-500/30 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all duration-300 hover:border-indigo-500/50";
+  const [businessType, setBusinessType] = useState(formData.companyProfile.businessType || "");
+  const [revenueRange, setRevenueRange] = useState(formData.companyProfile.revenueRange || "");
+
+  useEffect(() => {
+    const fetchCompanyDetails = async () => {
+      try {
+        const username = JSON.parse(sessionStorage.getItem("user") || "{}")
+          .username;
+        if (!username) {
+          console.error("No username found in session storage");
+          return;
+        }
+
+        const response = await axios.post(
+          "https://iu2p4xgbt4.execute-api.us-east-1.amazonaws.com/default/get_company_profile_details",
+          { companyId: username }
+        );
+
+        if (response.data && response.data.companyProfile) {
+          setBusinessType(response.data.companyProfile.businessType || "");
+          setRevenueRange(response.data.companyProfile.revenueRange || "");
+        }
+      } catch (error) {
+        console.error("Error fetching company profile details:", error);
+      }
+    };
+
+    fetchCompanyDetails();
+  }, []);
+
+  const cardStyles = "bg-gradient-to-br from-indigo-500/10 to-purple-500/10 backdrop-blur-sm border border-indigo-500/20 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300";
+  const selectStyles = "w-full bg-black/30 border border-indigo-500/30 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all duration-300";
   const previewTextStyles = "text-lg font-medium text-gray-100";
 
   return (
@@ -31,8 +66,8 @@ const CompanyBusinessDetails: React.FC<CompanyBusinessDetailsProps> = ({ formDat
           {isEditing ? (
             <select
               className={selectStyles}
-              value={formData.companyProfile.businessType}
-              onChange={(e) => handleInputChange('companyProfile', 'businessType', e.target.value)}
+              value={businessType}
+              onChange={(e) => handleInputChange("companyProfile", "businessType", e.target.value)}
               required
             >
               <option value="">Select business type</option>
@@ -41,9 +76,7 @@ const CompanyBusinessDetails: React.FC<CompanyBusinessDetailsProps> = ({ formDat
               ))}
             </select>
           ) : (
-            <p className={previewTextStyles}>
-              {formData.companyProfile.businessType || 'Not specified'}
-            </p>
+            <p className={previewTextStyles}>{businessType || "Not specified"}</p>
           )}
         </div>
 
@@ -52,8 +85,8 @@ const CompanyBusinessDetails: React.FC<CompanyBusinessDetailsProps> = ({ formDat
           {isEditing ? (
             <select
               className={selectStyles}
-              value={formData.companyProfile.revenueRange}
-              onChange={(e) => handleInputChange('companyProfile', 'revenueRange', e.target.value)}
+              value={revenueRange}
+              onChange={(e) => handleInputChange("companyProfile", "revenueRange", e.target.value)}
             >
               <option value="">Select revenue range</option>
               {revenueRanges.map((range) => (
@@ -61,9 +94,7 @@ const CompanyBusinessDetails: React.FC<CompanyBusinessDetailsProps> = ({ formDat
               ))}
             </select>
           ) : (
-            <p className={previewTextStyles}>
-              {formData.companyProfile.revenueRange || 'Not specified'}
-            </p>
+            <p className={previewTextStyles}>{revenueRange || "Not specified"}</p>
           )}
         </div>
       </div>
