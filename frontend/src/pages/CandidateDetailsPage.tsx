@@ -9,10 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 function NavLink({ icon, text, to }: { icon: React.ReactNode; text: string; to: string }) {
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Determine if this link is active
   const isActive = location.pathname === to;
-
   return (
     <button
       onClick={() => navigate(to)}
@@ -71,33 +68,39 @@ const CandidateDetailsPage: React.FC = () => {
   const [sortField, setSortField] = useState<keyof CandidateRow>('postedOn');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all'); // new filter for status
+  const [filterStatus, setFilterStatus] = useState('all'); // filter for status
   const [userName, setUserName] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // Retrieve company id and user info from session storage
   useEffect(() => {
-    const userData = sessionStorage.getItem("user");
+    const userData = sessionStorage.getItem('user');
     if (userData) {
       try {
         const parsedUser = JSON.parse(userData);
         setCompanyId(parsedUser.email);
         setUserName(parsedUser.name || parsedUser.email);
       } catch (error) {
-        console.error("Error parsing user data from session storage:", error);
+        console.error('Error parsing user data from session storage:', error);
       }
     }
   }, []);
 
-  // Load updated candidates from localStorage (if any)
+  // Fetch updated candidates from backend using getnightstatus API
   useEffect(() => {
-    const storedUpdated = localStorage.getItem('updatedCandidates');
-    if (storedUpdated) {
-      setUpdatedCandidates(JSON.parse(storedUpdated));
-    }
-  }, []);
+    if (!companyId) return;
+    axios
+      .get(`https://ho5dvgc5u2.execute-api.us-east-1.amazonaws.com/default/getnightstatus?company_id=${companyId}`)
+      .then((response) => {
+        // Assuming the endpoint returns an array under response.data.updatedCandidates
+        setUpdatedCandidates(response.data.updatedCandidates || []);
+      })
+      .catch((error) => {
+        console.error('Error fetching updated candidate data:', error);
+      });
+  }, [companyId]);
 
-  // Fetch candidate data once companyId is available
+  // Fetch candidate data from get_total_interview and filter out updated ones
   useEffect(() => {
     if (!companyId) return;
     axios
@@ -118,15 +121,12 @@ const CandidateDetailsPage: React.FC = () => {
             });
           }
         });
-        // Directly read updated candidates from localStorage
-        const storedUpdated = localStorage.getItem('updatedCandidates');
-        const updatedFromStorage: CandidateRow[] = storedUpdated ? JSON.parse(storedUpdated) : [];
-        
-        // Remove any candidates that have already been updated.
-        const filteredCandidates = candidateRows.filter(c =>
-          !updatedFromStorage.some(
-            (u) => u.candidateId === c.candidateId && u.jobId === c.jobId
-          )
+        // Filter out candidates that have been updated in the backend
+        const filteredCandidates = candidateRows.filter(
+          (c) =>
+            !updatedCandidates.some(
+              (u) => u.candidateId === c.candidateId && u.jobId === c.jobId
+            )
         );
         setCandidates(filteredCandidates);
       })
@@ -136,13 +136,13 @@ const CandidateDetailsPage: React.FC = () => {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [companyId]); // Note: updatedCandidates is no longer a dependency here
+  }, [companyId, updatedCandidates]);
 
-  // Combine updated candidates and those pending update.
+  // Combine updated candidates and those pending update
   const finalCandidates = [...updatedCandidates, ...candidates];
 
   // Filter candidates by search term and status filter
-  const filteredCandidates = finalCandidates.filter(candidate =>
+  const filteredCandidates = finalCandidates.filter((candidate) =>
     (candidate.candidateId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.jobId.toString().includes(searchTerm)) &&
@@ -158,9 +158,8 @@ const CandidateDetailsPage: React.FC = () => {
   });
 
   // Handle candidate action via POST API.
-  const handleCandidateAction = (candidate: CandidateRow, action: "approve" | "reject") => {
-    const endpoint = "https://v92aqono0a.execute-api.us-east-1.amazonaws.com/default/nightstatus";
-    
+  const handleCandidateAction = (candidate: CandidateRow, action: 'approve' | 'reject') => {
+    const endpoint = 'https://v92aqono0a.execute-api.us-east-1.amazonaws.com/default/nightstatus';
     axios
       .post(endpoint, {
         candidateId: candidate.candidateId,
@@ -168,34 +167,29 @@ const CandidateDetailsPage: React.FC = () => {
         action: action,
       })
       .then(() => {
-        // Create an updated candidate object with the new status and manager message.
-        const updatedCandidate: CandidateRow = {
-          ...candidate,
-          status: action === "approve" ? 10 : 0,
-          managerMessage:
-            action === "approve"
-              ? "Candidate is approved by the manager"
-              : "Candidate is rejected by the manager",
-          updated: true,
-        };
-        // Remove this candidate from the pending list.
-        setCandidates(prev =>
+        // Optionally remove the candidate from the pending list immediately
+        setCandidates((prev) =>
           prev.filter(
             (c) =>
               !(c.candidateId === candidate.candidateId && c.jobId === candidate.jobId)
           )
         );
-        // Add the updated candidate to the updatedCandidates list and persist in localStorage.
-        setUpdatedCandidates((prev) => {
-          const newUpdated = [...prev, updatedCandidate];
-          localStorage.setItem('updatedCandidates', JSON.stringify(newUpdated));
-          return newUpdated;
-        });
-        toast.success(`Candidate ${action === "approve" ? "approved" : "rejected"} successfully`);
+        toast.success(`Candidate ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
+        // Refresh updatedCandidates by calling the getnightstatus API again
+        if (companyId) {
+          axios
+            .get(`https://ho5dvgc5u2.execute-api.us-east-1.amazonaws.com/default/getnightstatus?company_id=${companyId}`)
+            .then((response) => {
+              setUpdatedCandidates(response.data.updatedCandidates || []);
+            })
+            .catch((error) => {
+              console.error('Error refreshing updated candidate data:', error);
+            });
+        }
       })
       .catch((error) => {
-        console.error("Error updating candidate status:", error);
-        toast.error("There was an error updating the candidate status.");
+        console.error('Error updating candidate status:', error);
+        toast.error('There was an error updating the candidate status.');
       });
   };
 
@@ -203,10 +197,7 @@ const CandidateDetailsPage: React.FC = () => {
   const LoadingSkeleton = () => (
     <>
       {Array.from({ length: 5 }).map((_, index) => (
-        <div
-          key={index}
-          className="grid grid-cols-5 gap-4 p-4 animate-pulse"
-        >
+        <div key={index} className="grid grid-cols-5 gap-4 p-4 animate-pulse">
           <div className="bg-gray-700 h-6 rounded"></div>
           <div className="bg-gray-700 h-6 rounded"></div>
           <div className="bg-gray-700 h-6 rounded"></div>
@@ -222,7 +213,6 @@ const CandidateDetailsPage: React.FC = () => {
       <Navbar />
       <div className="p-6">
         <h1 className="text-3xl font-bold text-purple-400 mb-6">Candidate Details</h1>
-        
         {/* Search and Filter Options */}
         <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mb-6">
           <div className="relative flex-1 mb-4 md:mb-0">
@@ -247,7 +237,6 @@ const CandidateDetailsPage: React.FC = () => {
             </select>
           </div>
         </div>
-
         {isLoading ? (
           <LoadingSkeleton />
         ) : (
@@ -259,7 +248,6 @@ const CandidateDetailsPage: React.FC = () => {
               <div>TITLE</div>
               <div>ACTIONS</div>
             </div>
-            
             <div className="divide-y divide-gray-800">
               {sortedCandidates.map((candidate) => (
                 <div
@@ -267,20 +255,12 @@ const CandidateDetailsPage: React.FC = () => {
                   className="grid grid-cols-5 gap-4 p-4 hover:bg-[#1a1a23] transition-colors"
                 >
                   <div className="text-gray-300">
-                    <Link
-                      to={`/analysis/${candidate.candidateId}`}
-                      state={{ candidate }}
-                      className="hover:underline"
-                    >
+                    <Link to={`/analysis/${candidate.candidateId}`} state={{ candidate }} className="hover:underline">
                       {candidate.candidateId}
                     </Link>
                   </div>
                   <div className="text-gray-300">
-                    <Link
-                      to={`/analysis/${candidate.candidateId}`}
-                      state={{ candidate }}
-                      className="hover:underline"
-                    >
+                    <Link to={`/analysis/${candidate.candidateId}`} state={{ candidate }} className="hover:underline">
                       {candidate.jobId}
                     </Link>
                   </div>
@@ -295,28 +275,21 @@ const CandidateDetailsPage: React.FC = () => {
                       </span>
                     )}
                     {candidate.managerMessage && (
-                      <div className="text-xs text-gray-400 mt-1">
-                        {candidate.managerMessage}
-                      </div>
+                      <div className="text-xs text-gray-400 mt-1">{candidate.managerMessage}</div>
                     )}
                   </div>
                   <div className="text-gray-300">
-                    <Link
-                      to={`/analysis/${candidate.candidateId}`}
-                      state={{ candidate }}
-                      className="hover:underline"
-                    >
+                    <Link to={`/analysis/${candidate.candidateId}`} state={{ candidate }} className="hover:underline">
                       {candidate.title}
                     </Link>
                   </div>
                   <div className="flex gap-2">
-                    {/* If this candidate has been updated, hide action buttons */}
                     {!candidate.updated ? (
                       <>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleCandidateAction(candidate, "approve");
+                            handleCandidateAction(candidate, 'approve');
                           }}
                           className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
                         >
@@ -325,7 +298,7 @@ const CandidateDetailsPage: React.FC = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleCandidateAction(candidate, "reject");
+                            handleCandidateAction(candidate, 'reject');
                           }}
                           className="px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm"
                         >
