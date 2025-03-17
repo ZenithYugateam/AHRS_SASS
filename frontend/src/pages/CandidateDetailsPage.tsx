@@ -89,13 +89,12 @@ const CandidateDetailsPage: React.FC = () => {
     }
   }, []);
 
-  // Load updated candidates from session storage (if any)
+  // Load updated candidates from localStorage (if any)
   useEffect(() => {
-           const storedUpdated = localStorage.getItem('updatedCandidates');
-           if (storedUpdated) {
-             setUpdatedCandidates(JSON.parse(storedUpdated));
-                            }
-
+    const storedUpdated = localStorage.getItem('updatedCandidates');
+    if (storedUpdated) {
+      setUpdatedCandidates(JSON.parse(storedUpdated));
+    }
   }, []);
 
   // Fetch candidate data once companyId is available
@@ -119,9 +118,13 @@ const CandidateDetailsPage: React.FC = () => {
             });
           }
         });
+        // Directly read updated candidates from localStorage
+        const storedUpdated = localStorage.getItem('updatedCandidates');
+        const updatedFromStorage: CandidateRow[] = storedUpdated ? JSON.parse(storedUpdated) : [];
+        
         // Remove any candidates that have already been updated.
         const filteredCandidates = candidateRows.filter(c =>
-          !updatedCandidates.some(
+          !updatedFromStorage.some(
             (u) => u.candidateId === c.candidateId && u.jobId === c.jobId
           )
         );
@@ -133,7 +136,7 @@ const CandidateDetailsPage: React.FC = () => {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [companyId, updatedCandidates]);
+  }, [companyId]); // Note: updatedCandidates is no longer a dependency here
 
   // Combine updated candidates and those pending update.
   const finalCandidates = [...updatedCandidates, ...candidates];
@@ -182,10 +185,10 @@ const CandidateDetailsPage: React.FC = () => {
               !(c.candidateId === candidate.candidateId && c.jobId === candidate.jobId)
           )
         );
-        // Add the updated candidate to the updatedCandidates list and persist in session storage.
+        // Add the updated candidate to the updatedCandidates list and persist in localStorage.
         setUpdatedCandidates((prev) => {
           const newUpdated = [...prev, updatedCandidate];
-         localStorage.setItem('updatedCandidates', JSON.stringify(newUpdated));
+          localStorage.setItem('updatedCandidates', JSON.stringify(newUpdated));
           return newUpdated;
         });
         toast.success(`Candidate ${action === "approve" ? "approved" : "rejected"} successfully`);
