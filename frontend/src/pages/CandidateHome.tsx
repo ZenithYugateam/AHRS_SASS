@@ -30,7 +30,6 @@ function CandidateHome() {
   const [isJobsDropdownOpen, setIsJobsDropdownOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
-  // Search & Filtering States
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [sortByNewest, setSortByNewest] = useState(false);
@@ -39,13 +38,11 @@ function CandidateHome() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
 
-  // Example stack tags
   const availableStacks = [
     "AI", "ML", "MERN Stack", "Full Stack", "Backend", "Frontend",
     "DevOps", "Data Science", "Cybersecurity", "Mobile Dev"
   ];
 
-  // 1) Load user data from session storage
   useEffect(() => {
     const storedUserData = sessionStorage.getItem("user");
     if (storedUserData) {
@@ -61,7 +58,6 @@ function CandidateHome() {
     }
   }, []);
 
-  // 2) Fetch job data from your API
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -71,7 +67,7 @@ function CandidateHome() {
         );
         if (response.data && response.data.data) {
           setJobData(response.data.data);
-          setFilteredJobs(response.data.data); // Initial full list
+          setFilteredJobs(response.data.data);
         } else {
           setError("No job data found");
         }
@@ -89,15 +85,10 @@ function CandidateHome() {
     fetchData();
   }, []);
 
-  // 3) Unique locations for filtering
   const uniqueLocations = Array.from(new Set(jobData.map((job) => job.location || "N/A")));
 
-  // 4) Filter logic for main job listings + job preference matches
   useEffect(() => {
-    // Base filtered list
     let filtered = [...jobData];
-
-    // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter((job) =>
         job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -105,15 +96,11 @@ function CandidateHome() {
         job.company_id?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
-    // Apply location filter
     if (selectedLocation) {
       filtered = filtered.filter((job) =>
         job.location?.toLowerCase().includes(selectedLocation.toLowerCase())
       );
     }
-
-    // Apply selected tags filter
     if (selectedTags.length > 0) {
       filtered = filtered.filter((job) =>
         selectedTags.some((tag) =>
@@ -122,8 +109,6 @@ function CandidateHome() {
         )
       );
     }
-
-    // Sort by newest
     if (sortByNewest) {
       filtered.sort((a, b) => {
         const dateA = new Date(a.posted_on || a.job_posted || Date.now()).getTime();
@@ -131,12 +116,8 @@ function CandidateHome() {
         return dateB - dateA;
       });
     }
-
-    // Update main job listings
     setFilteredJobs(filtered);
 
-    // ---- Now create a separate filtered list for "Jobs Matching Your Preferences" ----
-    // 1) Start with jobs that match the user's stored preferences
     let prefMatches = jobData.filter((job) => {
       if (!jobPreferences || jobPreferences.length === 0) return false;
       return jobPreferences.some((pref) => {
@@ -148,7 +129,6 @@ function CandidateHome() {
       });
     });
 
-    // 2) Apply the same search/location/tags/sort logic to the preference matches
     if (searchQuery) {
       prefMatches = prefMatches.filter((job) =>
         job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -176,25 +156,15 @@ function CandidateHome() {
         return dateB - dateA;
       });
     }
-
-    // Update preference matches
     setFilteredPreferenceMatches(prefMatches);
-  }, [
-    searchQuery,
-    selectedLocation,
-    selectedTags,
-    sortByNewest,
-    jobData,
-    jobPreferences
-  ]);
+  }, [searchQuery, selectedLocation, selectedTags, sortByNewest, jobData, jobPreferences]);
 
-  // 5) Render each job card
   const renderJobCard = (job: Job, index: number) => (
     <motion.div
       key={index}
       onClick={() => handleJobClick(job)}
       className="w-full max-w-[300px] h-[250px] p-5 bg-gradient-to-r from-[#F700FC] to-[#2941B9] 
-                 rounded-lg flex flex-col justify-between shadow-lg hover:shadow-xl transition-shadow"
+                 rounded-lg flex flex-col justify-between shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -235,17 +205,24 @@ function CandidateHome() {
     </motion.div>
   );
 
-  // 6) Handle job click -> store + navigate
   const handleJobClick = (job: Job) => {
+    console.log("Job clicked:", job); // Debug log
     localStorage.setItem("selectedJob", JSON.stringify(job));
     const storedUserData = sessionStorage.getItem("user");
     if (storedUserData) {
-      const email = JSON.parse(storedUserData).email;
-      navigate("/upload-resume", { state: { job, email } });
+      try {
+        const email = JSON.parse(storedUserData).email;
+        console.log("Navigating to /jobdesc with:", { job, email }); // Debug log
+        navigate("/jobdesc", { state: { job, email } });
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    } else {
+      console.log("No user data in sessionStorage, redirecting to signin");
+      navigate("/signin");
     }
   };
 
-  // 7) Logout & Navigation
   const handleLogout = () => {
     sessionStorage.removeItem("user");
     navigate("/");
@@ -265,7 +242,6 @@ function CandidateHome() {
 
   return (
     <div className="min-h-screen bg-[#0F0B1E]">
-      {/* Navigation Bar */}
       <nav className="bg-[#1A1528] py-4 px-6 shadow-md">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="text-white font-bold text-2xl">247 Interview.com</div>
@@ -273,7 +249,6 @@ function CandidateHome() {
             <a href="#" className="text-white hover:text-gray-300 transition-colors">
               Home
             </a>
-            {/* Jobs Dropdown */}
             <div className="relative">
               <button
                 className="text-white hover:text-gray-300 transition-colors flex items-center"
@@ -298,7 +273,6 @@ function CandidateHome() {
                 </div>
               )}
             </div>
-            {/* Profile Dropdown */}
             <div className="relative">
               <button className="flex items-center space-x-2" onClick={toggleProfileDropdown}>
                 <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
@@ -327,7 +301,6 @@ function CandidateHome() {
                 </div>
               )}
             </div>
-            {/* Red Logout Button */}
             <button
               onClick={handleLogout}
               className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
@@ -338,9 +311,7 @@ function CandidateHome() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
         <header className="mb-8">
           <h2 className="text-3xl font-bold text-white">Welcome, {username}</h2>
           <p className="text-gray-400 mt-1">
@@ -348,7 +319,6 @@ function CandidateHome() {
           </p>
         </header>
 
-        {/* Filters and Search */}
         <section className="mb-8">
           <div className="flex flex-col gap-4">
             <input
@@ -400,10 +370,6 @@ function CandidateHome() {
           </div>
         </section>
 
-        {/* 
-          A. Preferred Jobs Section: 
-          Only shown if the user has job preferences AND we have at least one matching job 
-        */}
         {jobPreferences.length > 0 && filteredPreferenceMatches.length > 0 && (
           <section className="mb-8">
             <h3 className="text-2xl font-semibold text-white mb-4">
@@ -415,7 +381,6 @@ function CandidateHome() {
           </section>
         )}
 
-        {/* B. Main Job Listings Section */}
         <section>
           <h3 className="text-2xl font-semibold text-white mb-4">Job Listings</h3>
           {loading ? (

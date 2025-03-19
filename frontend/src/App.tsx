@@ -14,6 +14,7 @@ import AppliedJobs from './pages/AppliedJobs';
 import Offers from './pages/Offers';
 import CandidateDetailsPage from './pages/CandidateDetailsPage';
 import Profile from './pages/UserProfile';
+import Jobdesc from './pages/Jobdesc';
 import { ToastContainer } from 'react-toastify';
 //
 import CandidateAnalysisPage from './pages/CandidateAnalysisPage';
@@ -42,6 +43,7 @@ function App() {
         <Route path="/profile" element={<Profile/>}/>;
         <Route path="/Companyprofile" element={<Companyprofile/>}/>;
         <Route path="/analysis/:candidateId" element={<CandidateAnalysisPage />} />
+        <Route path="/jobdesc" element={<Jobdesc />} />
         
       </Routes>
     </Router>
