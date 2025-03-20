@@ -2,8 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import ContentLoader from 'react-content-loader';
-import { ChevronDown, User } from 'lucide-react';
+import { ChevronDown, User, Briefcase, MapPin, DollarSign } from 'lucide-react';
 
 interface Job {
   job_id: string;
@@ -163,56 +162,75 @@ function CandidateHome() {
     <motion.div
       key={index}
       onClick={() => handleJobClick(job)}
-      className="w-full max-w-[300px] h-[250px] p-5 bg-gradient-to-r from-[#F700FC] to-[#2941B9] 
-                 rounded-lg flex flex-col justify-between shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
+      className="w-[300px] h-[300px] bg-[#1E1A2B] rounded-2xl p-5 shadow-inner 
+                 hover:shadow-[0_0_15px_rgba(247,0,252,0.5)] transition-all duration-300 
+                 cursor-pointer relative overflow-hidden" // Added overflow-hidden to contain content
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.1 }}
+      whileHover={{ scale: 1.02, y: -5 }}
+      transition={{ duration: 0.5, delay: index * 0.1, type: "spring" }}
     >
-      <div className="flex justify-between">
-        <div className="text-white">
-          <h3 className="text-[16px] font-semibold">{job.title}</h3>
-          <p className="text-[10px] font-thin">{job.company_id}</p>
-          <p className="text-[8px] font-thin">
-            {new Date(job.posted_on || job.job_posted || Date.now()).toDateString()}
-          </p>
-        </div>
-        <div
-          className={`px-3 py-1 rounded-full text-center h-fit text-[8px] 
-                      ${job.approval ? "bg-green-500" : "bg-yellow-500"}`}
-        >
+      {/* Gradient Line at the Top */}
+      <div className="h-2 w-full bg-gradient-to-r from-[#F700FC] to-[#2941B9] rounded-t-lg absolute top-0 left-0" />
+
+      {/* Status Badge at Top-Right */}
+      <div className="absolute top-4 right-4">
+        <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-medium text-white
+                          ${job.approval ? "bg-green-500/80" : "bg-yellow-500/80"}`}>
           {job.approval ? "Eligible" : "Pending"}
-        </div>
+        </span>
       </div>
-      <div className="grid grid-cols-2 gap-3 mt-2 text-[12px] text-white">
-        <div>
-          <h4>Experience</h4>
-          <p>{job.experience || "N/A"}</p>
+
+      {/* Header Content with Reduced Spacing */}
+      <div className="mt-6">
+        <motion.h3
+          className="text-xl font-bold text-white line-clamp-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          {job.title}
+        </motion.h3>
+        <div className="inline-block bg-[#F700FC]/20 text-white text-sm font-medium px-2 py-1 rounded-full mt-1">
+          {job.company_id}
         </div>
-        <div>
-          <h4>Location</h4>
-          <p>{job.location || "N/A"}</p>
+        <p className="text-[12px] text-gray-400 mt-1">
+          {new Date(job.posted_on || job.job_posted || Date.now()).toDateString()}
+        </p>
+      </div>
+
+      {/* Body */}
+      <div className="mt-3 flex flex-col gap-1 text-base text-[#B0B0B0]"> {/* Reduced mt-4 to mt-3 and gap-2 to gap-1 */}
+        <div className="flex items-center gap-2">
+          <Briefcase className="h-4 w-4 text-[#F700FC]" />
+          <span className="line-clamp-1">{job.experience || "N/A"}</span>
         </div>
-        <div>
-          <h4>Salary</h4>
-          <p>{job.salary || "N/A"}</p>
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-[#F700FC]" />
+          <span className="line-clamp-1">{job.location || "N/A"}</span>
         </div>
-        <div>
-          <h4>Description</h4>
-          <p className="line-clamp-3">{job.description || "N/A"}</p>
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4 text-[#F700FC]" />
+          <span className="text-white relative line-clamp-1">
+            {job.salary || "N/A"}
+            <div className="absolute -bottom-1 left-0 w-full h-1.5 bg-[#F700FC] rounded opacity-80" /> {/* Made underline thicker and more visible */}
+          </span>
         </div>
+        <p className="text-[14px] text-gray-400 line-clamp-1 mt-1"> {/* Reduced to line-clamp-1 */}
+          {job.description || "N/A"}
+        </p>
       </div>
     </motion.div>
   );
 
   const handleJobClick = (job: Job) => {
-    console.log("Job clicked:", job); // Debug log
+    console.log("Job clicked:", job);
     localStorage.setItem("selectedJob", JSON.stringify(job));
     const storedUserData = sessionStorage.getItem("user");
     if (storedUserData) {
       try {
         const email = JSON.parse(storedUserData).email;
-        console.log("Navigating to /jobdesc with:", { job, email }); // Debug log
+        console.log("Navigating to /jobdesc with:", { job, email });
         navigate("/jobdesc", { state: { job, email } });
       } catch (error) {
         console.error("Error parsing user data:", error);
@@ -375,7 +393,7 @@ function CandidateHome() {
             <h3 className="text-2xl font-semibold text-white mb-4">
               Jobs Matching Your Preferences
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10">
               {filteredPreferenceMatches.map((job, index) => renderJobCard(job, index))}
             </div>
           </section>
@@ -384,30 +402,15 @@ function CandidateHome() {
         <section>
           <h3 className="text-2xl font-semibold text-white mb-4">Job Listings</h3>
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10">
               {[...Array(4)].map((_, index) => (
-                <ContentLoader
-                  key={index}
-                  speed={2}
-                  width={300}
-                  height={250}
-                  viewBox="0 0 300 250"
-                  backgroundColor="#1E1A2B"
-                  foregroundColor="#2E2840"
-                  className="rounded-lg"
-                >
-                  <rect x="10" y="10" rx="8" ry="8" width="280" height="25" />
-                  <rect x="10" y="50" rx="6" ry="6" width="150" height="15" />
-                  <rect x="10" y="80" rx="6" ry="6" width="200" height="15" />
-                  <rect x="10" y="120" rx="6" ry="6" width="120" height="15" />
-                  <rect x="10" y="160" rx="6" ry="6" width="100" height="15" />
-                </ContentLoader>
+                <div key={index} className="w-[300px] h-[300px] bg-[#1E1A2B] rounded-2xl animate-pulse" />
               ))}
             </div>
           ) : error ? (
             <p className="text-red-500">{error}</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-10">
               {filteredJobs.map((job, index) => renderJobCard(job, index))}
             </div>
           )}
