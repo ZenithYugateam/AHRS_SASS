@@ -749,7 +749,7 @@ function Dashboard() {
                         </p>
                         <button
                           className="text-white hover:underline"
-                          onClick={() => navigate("/total-interview")}
+                          onClick={() => navigate("/interview-maker")}
                         >
                           View Details
                         </button>
@@ -767,7 +767,8 @@ function Dashboard() {
                         <p className="text-sm mb-4">
                           {totalParticipants} Applications
                         </p>
-                        <button className="text-white hover:underline">
+                        <button className="text-white hover:underline"
+                        onClick={() => navigate("/total-interview")}>
                           View Details
                         </button>
                       </div>
