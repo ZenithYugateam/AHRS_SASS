@@ -292,32 +292,17 @@ function CandidateHome() {
               )}
             </div>
             <div className="relative">
-              <button className="flex items-center space-x-2" onClick={toggleProfileDropdown}>
+              <button className="flex items-center space-x-2"   onClick={() => {
+                      navigate("/profile");
+                      setIsProfileDropdownOpen(false);
+                    }}>
                 <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
                   <User className="h-6 w-6 text-[#1A1528]" />
                 </div>
                 <span className="text-white">
-                  {username} <ChevronDown className="inline h-4 w-4" />
+                  {username} 
                 </span>
               </button>
-              {isProfileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-[#1A1528] rounded-md shadow-lg py-1 z-10">
-                  <button
-                    onClick={() => {
-                      navigate("/profile");
-                      setIsProfileDropdownOpen(false);
-                    }}
-                    className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
-                  >
-                    Profile
-                  </button>
-                  <button
-                    className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-[#2A2538]"
-                  >
-                    Settings
-                  </button>
-                </div>
-              )}
             </div>
             <button
               onClick={handleLogout}

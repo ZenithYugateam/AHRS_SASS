@@ -489,7 +489,7 @@ Return only valid JSON.`;
                 value={formData.total_time}
                 onChange={handleInputChange}
                 min="5"
-                max="120"
+                max=" "
                 className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
                 required
               />
