@@ -14,6 +14,7 @@ import {
   FileText,
   CheckCircle,
   AlertTriangle,
+  Timer,
 } from 'lucide-react';
 import { Bar, Pie, Radar } from 'react-chartjs-2';
 import html2canvas from 'html2canvas';
@@ -57,6 +58,7 @@ interface ResponseItem {
   dynamicAccuracy: number;
   isCorrect: boolean | null;
   videoUrl: string;
+  duration?: number; // Duration in seconds for this question
 }
 
 interface InterviewResponse {
@@ -64,6 +66,7 @@ interface InterviewResponse {
   job_id: number;
   responses: ResponseItem[];
   submittedAt: string;
+  totalDuration?: number; // Total duration in seconds
 }
 
 interface Candidate {
@@ -73,6 +76,21 @@ interface Candidate {
   status: 'Selected' | 'Rejected';
   title: string;
 }
+
+// --- Utility Function to Format Duration ---
+const formatDuration = (seconds: number): string => {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+
+  if (hours > 0) {
+    return `${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes !== 1 ? 's' : ''}, ${remainingSeconds} second${remainingSeconds !== 1 ? 's' : ''}`;
+  } else if (minutes > 0) {
+    return `${minutes} minute${minutes !== 1 ? 's' : ''}, ${remainingSeconds} second${remainingSeconds !== 1 ? 's' : ''}`;
+  } else {
+    return `${remainingSeconds} second${remainingSeconds !== 1 ? 's' : ''}`;
+  }
+};
 
 // --- Navbar Component ---
 function Navbar() {
@@ -115,6 +133,7 @@ interface PerformanceSummaryProps {
   totalDynamic: number;
   correct: number;
   incorrect: number;
+  totalDuration: number; // Add total duration prop
 }
 
 function PerformanceSummary({
@@ -122,6 +141,7 @@ function PerformanceSummary({
   totalDynamic,
   correct,
   incorrect,
+  totalDuration,
 }: PerformanceSummaryProps) {
   return (
     <section>
@@ -129,7 +149,7 @@ function PerformanceSummary({
         <span className="i-lucide-bar-chart-2"></span>
         Performance Summary
       </h2>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4"> {/* Updated to 5 columns */}
         <div className="bg-[#12121a] p-6 rounded-lg shadow-lg border border-gray-800">
           <div className="text-gray-400 mb-2">Validation Score</div>
           <div className="text-2xl font-bold text-red-500">{totalValidation}/100</div>
@@ -150,6 +170,13 @@ function PerformanceSummary({
           <div className="text-2xl font-bold text-red-500 flex items-center gap-2">
             <AlertTriangle className="w-5 h-5" />
             {incorrect}
+          </div>
+        </div>
+        <div className="bg-[#12121a] p-6 rounded-lg shadow-lg border border-gray-800">
+          <div className="text-gray-400 mb-2">Total Duration</div>
+          <div className="text-2xl font-bold text-purple-500 flex items-center gap-2">
+            <Timer className="w-5 h-5" />
+            {formatDuration(totalDuration)}
           </div>
         </div>
       </div>
@@ -178,16 +205,14 @@ function QuestionDetails({ question }: { question: ResponseItem }) {
             {question.answerValidation ? `${question.answerValidation.score}/100` : 'N/A'}
           </span>
           <ChevronDown
-            className={`w-5 h-5 text-gray-400 transition-transform ${
-              isExpanded ? 'rotate-180' : ''
-            }`}
+            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
           />
         </div>
       </div>
 
       {isExpanded && (
         <div className="p-4 border-t border-gray-800 bg-[#0a0a0f]">
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-4 gap-4 mb-6"> {/* Updated to 4 columns */}
             <div>
               <div className="text-sm text-gray-400 mb-1">Validation Score</div>
               <div className="text-xl text-red-500">
@@ -201,6 +226,12 @@ function QuestionDetails({ question }: { question: ResponseItem }) {
             <div>
               <div className="text-sm text-gray-400 mb-1">Answer Length</div>
               <div className="text-xl text-red-500">{question.answer.length} characters</div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-400 mb-1">Duration</div>
+              <div className="text-xl text-purple-500">
+                {question.duration ? formatDuration(question.duration) : 'N/A'}
+              </div>
             </div>
           </div>
 
@@ -267,7 +298,6 @@ const CandidateAnalysisPage: React.FC = () => {
     );
   }
 
-  // Determine candidateId from either candidate.id or candidate.candidateId
   const candidateId = candidate.id || candidate.candidateId;
   if (!candidateId) {
     return (
@@ -277,7 +307,6 @@ const CandidateAnalysisPage: React.FC = () => {
     );
   }
 
-  // Convert candidate.jobId to a number before sending in the API request
   const numericJobId = Number(candidate.jobId);
   if (isNaN(numericJobId)) {
     console.error("Candidate jobId is not a number");
@@ -313,11 +342,11 @@ const CandidateAnalysisPage: React.FC = () => {
     (resp) => resp.answerValidation && resp.answerValidation.score >= 50
   ).length;
   const incorrectCount = responses.length - correctCount;
+  const totalDuration = interviewData?.totalDuration || 0; // Get totalDuration from interviewData
 
-  // Compute candidate status based on average validation score
   const computedStatus = avgValidation >= 40 ? 'Selected' : 'Rejected';
 
-  // Chart Data (using raw scores for bar chart)
+  // Chart Data
   const barChartData = {
     labels: responses.map((resp) => `Q${resp.questionId}`),
     datasets: [
@@ -336,14 +365,8 @@ const CandidateAnalysisPage: React.FC = () => {
     datasets: [
       {
         data: [correctCount, incorrectCount],
-        backgroundColor: [
-          'rgba(34, 197, 94, 0.5)',
-          'rgba(239, 68, 68, 0.5)',
-        ],
-        borderColor: [
-          'rgba(34, 197, 94, 1)',
-          'rgba(239, 68, 68, 1)',
-        ],
+        backgroundColor: ['rgba(34, 197, 94, 0.5)', 'rgba(239, 68, 68, 0.5)'],
+        borderColor: ['rgba(34, 197, 94, 1)', 'rgba(239, 68, 68, 1)'],
         borderWidth: 1,
       },
     ],
@@ -475,6 +498,7 @@ const CandidateAnalysisPage: React.FC = () => {
             totalDynamic={avgDynamic}
             correct={correctCount}
             incorrect={incorrectCount}
+            totalDuration={totalDuration}
           />
 
           <section>

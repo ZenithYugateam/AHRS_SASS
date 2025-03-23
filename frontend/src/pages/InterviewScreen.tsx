@@ -27,6 +27,7 @@ interface ResponseData {
   dynamicEvaluation?: string;
   dynamicAccuracy?: number;
   answerValidation?: AnswerValidation;
+  duration?: number; // Time spent on this question in seconds
 }
 
 function InterviewScreen() {
@@ -79,6 +80,7 @@ function InterviewScreen() {
   const [nextProcessing, setNextProcessing] = useState(false);
   const [apiProcessing, setApiProcessing] = useState(false);
   const pauseTimerRef = useRef<number | null>(null);
+  const questionStartTimeRef = useRef<number | null>(null); // Track start time of each question
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -193,12 +195,13 @@ function InterviewScreen() {
     if (isVoiceMode) setAnswer(transcript);
   }, [transcript, isVoiceMode]);
 
-  // Speak Current Question
+  // Speak Current Question and Start Timer
   useEffect(() => {
     if (isInterviewStarted && questions[currentQuestion]) {
       const perQuestionTime = Math.floor(totalTime / questions.length);
       readQuestion();
       setTimeLeft(perQuestionTime);
+      questionStartTimeRef.current = Date.now(); // Start timing for this question
     }
   }, [currentQuestion, isInterviewStarted, totalTime, questions]);
 
@@ -373,6 +376,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     }
     setIsInterviewStarted(true);
     setTimeLeft(Math.floor(totalTime / questions.length));
+    questionStartTimeRef.current = Date.now(); // Start timing for first question
     await startVideoRecording();
     readQuestion();
   };
@@ -391,6 +395,13 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
       answer: candidateAnswer,
       correctAnswer: questions[currentQuestion].correctAnswer,
     };
+
+    // Calculate duration for this question
+    const endTime = Date.now();
+    if (questionStartTimeRef.current) {
+      const duration = Math.floor((endTime - questionStartTimeRef.current) / 1000); // Duration in seconds
+      currentResponse.duration = duration;
+    }
 
     const validation = await validateCandidateAnswer(candidateAnswer, questions[currentQuestion]);
     currentResponse.answerValidation = validation;
@@ -425,14 +436,17 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
       });
     }
 
-    // Store the response with videoUrl in both state and ref
+    // Store the response with videoUrl and duration in both state and ref
     setResponses((prev) => {
       const updatedResponses = [
         ...prev.filter((r) => r.questionId !== currentResponse.questionId),
         { ...currentResponse, videoUrl },
       ];
       responsesRef.current = updatedResponses; // Update ref
-      console.log(`Stored response for question ${currentResponse.questionId} with videoUrl. Responses:`, updatedResponses);
+      console.log(
+        `Stored response for question ${currentResponse.questionId} with videoUrl and duration ${currentResponse.duration}s. Responses:`,
+        updatedResponses
+      );
       return updatedResponses;
     });
 
@@ -468,6 +482,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
       setSelectedOption(null);
       resetTranscript();
       setTimeLeft(Math.floor(totalTime / questions.length));
+      questionStartTimeRef.current = Date.now(); // Reset start time for next question
       await startVideoRecording();
     } else {
       console.log("All questions completed. Submitting interview with responses:", responsesRef.current);
@@ -492,6 +507,9 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     setSubmissionLoading(true);
     try {
       const avgValidatedScore = await evaluateInterview();
+      const totalDuration = responsesRef.current.reduce((acc, res) => acc + (res.duration || 0), 0); // Total interview time in seconds
+      console.log("Individual durations:", responsesRef.current.map((r) => `${r.questionId}: ${r.duration}s`));
+      console.log(`Total duration: ${totalDuration}s (${(totalDuration / 60).toFixed(2)} minutes)`);
       const candidateStatus = avgValidatedScore > 40 ? 10 : 5;
       const jobIdInt = parseInt(job.job_id || job.id, 10);
       await axios.post(
@@ -499,7 +517,13 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
         { candidateId, companyId: job.company_id, jobId: jobIdInt, status: candidateStatus },
         { headers: { "Content-Type": "application/json" } }
       );
-      const payload = { candidateId, jobId: jobIdInt, responses: responsesRef.current, finalScore: avgValidatedScore };
+      const payload = {
+        candidateId,
+        jobId: jobIdInt,
+        responses: responsesRef.current,
+        finalScore: avgValidatedScore,
+        totalDuration, // Include total duration in payload
+      };
       console.log("Submitting payload:", payload);
       await axios.post(STORE_INTERVIEW_ENDPOINT, payload, { headers: { "Content-Type": "application/json" } });
       setSubmitted(true);
@@ -613,7 +637,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
                     </button>
                     <button
                       onClick={toggleVoiceMode}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
+                      className={`flex items-center gap.purchase2 px-4 py-2 rounded-lg transition-all ${
                         isVoiceMode && listening ? "bg-purple-600" : "bg-[#2A1528]"
                       }`}
                     >
