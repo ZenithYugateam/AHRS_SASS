@@ -33,7 +33,6 @@ function InterviewScreen() {
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  // Retrieve job data from navigation state or localStorage.
   const [job, setJob] = useState(() => {
     if (state && state.job) {
       localStorage.setItem("selectedJob", JSON.stringify(state.job));
@@ -52,26 +51,23 @@ function InterviewScreen() {
 
   if (!job) return null;
 
-  // Retrieve candidate email from local storage (login session).
-  const candidateEmail =  sessionStorage.getItem("user") || " no candiaite id";
+  const candidateEmail = sessionStorage.getItem("user") || "no candidate id";
   const email = JSON.parse(candidateEmail).email;
-  console.log(email)
-    
 
-  // State variables.
+  // State and Ref variables
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [totalTime, setTotalTime] = useState(0); // API sends total_time in minutes; convert to seconds.
+  const [totalTime, setTotalTime] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [answer, setAnswer] = useState("");
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [responses, setResponses] = useState<ResponseData[]>([]);
+  const responsesRef = useRef<ResponseData[]>([]); // Add ref to track responses
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isInterviewStarted, setIsInterviewStarted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  // Use candidate email as candidateId.
   const [candidateId] = useState<string>(email);
   const [isPaused, setIsPaused] = useState(false);
   const [pauseMessage, setPauseMessage] = useState("");
@@ -80,9 +76,7 @@ function InterviewScreen() {
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [maleVoice, setMaleVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [warningCount, setWarningCount] = useState(0);
-  // New state to disable Next button during API call.
   const [nextProcessing, setNextProcessing] = useState(false);
-  // State to show API processing message.
   const [apiProcessing, setApiProcessing] = useState(false);
   const pauseTimerRef = useRef<number | null>(null);
 
@@ -91,16 +85,14 @@ function InterviewScreen() {
   const chunksRef = useRef<Blob[]>([]);
   const speechSynthesisRef = useRef<SpeechSynthesis | null>(null);
 
-  const { transcript, listening, resetTranscript, browserSupportsSpeechRecognition } =
-    useSpeechRecognition();
+  const { transcript, listening, resetTranscript, browserSupportsSpeechRecognition } = useSpeechRecognition();
 
-  // --- Configuration Constants ---
   const OPENAI_API_KEY = "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";
   const STORE_INTERVIEW_ENDPOINT = "https://vbajfgmatb.execute-api.us-east-1.amazonaws.com/prod/storeInterview";
   const CANDIDATE_STATUS_ENDPOINT = "https://l1i2uu3p32.execute-api.us-east-1.amazonaws.com/default/post_candidate_status";
   const PRESIGNED_URL_ENDPOINT = "https://071h9ufh65.execute-api.us-east-1.amazonaws.com/singedurl";
 
-  // --- Speech Synthesis Setup (Male Voice) ---
+  // Speech Synthesis Setup
   useEffect(() => {
     speechSynthesisRef.current = window.speechSynthesis;
     const loadVoices = () => {
@@ -110,24 +102,18 @@ function InterviewScreen() {
     };
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
-    return () => {
-      speechSynthesisRef.current?.cancel();
-    };
+    return () => speechSynthesisRef.current?.cancel();
   }, []);
 
-  // --- Restrict Copy-Paste and Detect Tab Switching ---
+  // Restrict Copy-Paste and Tab Switching
   useEffect(() => {
     const handleCopyPaste = (e: ClipboardEvent) => {
       e.preventDefault();
       incrementWarning("Copying/Cutting is not allowed!");
     };
-
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        incrementWarning("Tab switching is not allowed!");
-      }
+      if (document.hidden) incrementWarning("Tab switching is not allowed!");
     };
-
     const incrementWarning = (message: string) => {
       setWarningCount((prev) => {
         const newCount = prev + 1;
@@ -140,11 +126,9 @@ function InterviewScreen() {
         return newCount;
       });
     };
-
     window.addEventListener("copy", handleCopyPaste);
     window.addEventListener("cut", handleCopyPaste);
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
     return () => {
       window.removeEventListener("copy", handleCopyPaste);
       window.removeEventListener("cut", handleCopyPaste);
@@ -152,14 +136,11 @@ function InterviewScreen() {
     };
   }, [navigate]);
 
-  // --- Fetch Questions using dynamic job parameters ---
+  // Fetch Questions
   useEffect(() => {
     axios
       .get("https://q06ec9jvd4.execute-api.us-east-1.amazonaws.com/qa/get_questions", {
-        params: { 
-          company_id: job.company_id, 
-          job_id: job.job_id || job.id,
-        },
+        params: { company_id: job.company_id, job_id: job.job_id || job.id },
       })
       .then((response) => {
         let apiQuestions: Question[] = [];
@@ -171,18 +152,19 @@ function InterviewScreen() {
             options: q.M.options ? q.M.options : undefined,
           }));
         }
-        setQuestions([
+        const allQuestions = [
           {
             id: 1,
-            text:
-              "Please describe your most recent project and your role in it. Include key technologies and challenges you faced.",
+            text: "Please describe your most recent project and your role in it. Include key technologies and challenges you faced.",
           },
           ...apiQuestions,
-        ]);
+        ];
+        console.log("Initial questions:", allQuestions);
+        setQuestions(allQuestions);
         if (response.data.total_time) {
-          const totalSec = response.data.total_time * 60; // Convert minutes to seconds.
+          const totalSec = response.data.total_time * 60;
           setTotalTime(totalSec);
-          setTimeLeft(Math.floor(totalSec / (apiQuestions.length + 1)));
+          setTimeLeft(Math.floor(totalSec / allQuestions.length));
         }
       })
       .catch((error) => {
@@ -190,14 +172,13 @@ function InterviewScreen() {
         setQuestions([
           {
             id: 1,
-            text:
-              "Please describe your most recent project and your role in it. Include key technologies and challenges you faced.",
+            text: "Please describe your most recent project and your role in it. Include key technologies and challenges you faced.",
           },
         ]);
       });
   }, [job]);
 
-  // --- Timer Effect ---
+  // Timer Effect
   useEffect(() => {
     if (isInterviewStarted && !isPaused && timeLeft > 0) {
       const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
@@ -207,14 +188,12 @@ function InterviewScreen() {
     }
   }, [timeLeft, isInterviewStarted, isPaused]);
 
-  // --- Update answer from transcript ---
+  // Update Answer from Transcript
   useEffect(() => {
-    if (isVoiceMode) {
-      setAnswer(transcript);
-    }
+    if (isVoiceMode) setAnswer(transcript);
   }, [transcript, isVoiceMode]);
 
-  // --- Speak the current question once ---
+  // Speak Current Question
   useEffect(() => {
     if (isInterviewStarted && questions[currentQuestion]) {
       const perQuestionTime = Math.floor(totalTime / questions.length);
@@ -223,21 +202,18 @@ function InterviewScreen() {
     }
   }, [currentQuestion, isInterviewStarted, totalTime, questions]);
 
-  // --- Text-to-Speech for Questions ---
   const readQuestion = () => {
     if (speechSynthesisRef.current && questions[currentQuestion]) {
       speechSynthesisRef.current.cancel();
       const utterance = new SpeechSynthesisUtterance(questions[currentQuestion].text);
       utterance.rate = 0.9;
       utterance.pitch = 1;
-      if (maleVoice) {
-        utterance.voice = maleVoice;
-      }
+      if (maleVoice) utterance.voice = maleVoice;
       speechSynthesisRef.current.speak(utterance);
     }
   };
 
-  // --- Pre-signed URL Upload Flow ---
+  // Video Recording and Upload
   const uploadVideoToS3 = async (videoBlob: Blob): Promise<string> => {
     try {
       const currentQuestionId = questions[currentQuestion].id.toString();
@@ -252,9 +228,7 @@ function InterviewScreen() {
         headers: { "Content-Type": "video/webm" },
         body: videoBlob,
       });
-      if (!putResponse.ok) {
-        throw new Error(`S3 upload failed with status ${putResponse.status}`);
-      }
+      if (!putResponse.ok) throw new Error(`S3 upload failed with status ${putResponse.status}`);
       return `https://avhrsvideobucket.s3.amazonaws.com/${fileName}`;
     } catch (error) {
       console.error("Error uploading video to S3:", error);
@@ -262,7 +236,6 @@ function InterviewScreen() {
     }
   };
 
-  // --- Video Recording Flow ---
   const startVideoRecording = async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -272,21 +245,7 @@ function InterviewScreen() {
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
-        }
-      };
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunksRef.current, { type: "video/webm" });
-        try {
-          const videoUrl = await uploadVideoToS3(blob);
-          setResponses((prev) => {
-            const currentResponse = prev[prev.length - 1] || {};
-            return [...prev.slice(0, -1), { ...currentResponse, videoUrl }];
-          });
-        } catch (error) {
-          console.error("Error during video upload:", error);
-        }
+        if (event.data.size > 0) chunksRef.current.push(event.data);
       };
       mediaRecorder.start();
       setIsRecording(true);
@@ -304,11 +263,6 @@ function InterviewScreen() {
     }
   };
 
-  // --- Placeholder for Cheating Analysis ---
-  const analyzeCheating = (mediaStream: MediaStream) => {
-    console.log("Analyzing live video for cheating... (placeholder)");
-  };
-
   const toggleVoiceMode = () => {
     if (!browserSupportsSpeechRecognition) {
       alert("Your browser does not support voice recognition.");
@@ -322,7 +276,7 @@ function InterviewScreen() {
     }
   };
 
-  // --- Validate Candidate Answer ---
+  // Validate Answer
   const validateCandidateAnswer = async (candidateAnswer: string, question: Question) => {
     try {
       const prompt = `
@@ -359,11 +313,10 @@ Evaluation: <your evaluation comment>. Score: <score>%
     }
   };
 
-  // --- Dynamic Follow-up Generation (limited to 2 dynamic questions) ---
+  // Generate Dynamic Question
   const generateDynamicQuestion = async (candidateAnswer: string, staticQuestion: Question) => {
     try {
-      if (dynamicCount >= 2)
-        return { dynamicQuestion: "", dynamicEvaluation: "", dynamicAccuracy: 0 };
+      if (dynamicCount >= 2) return { dynamicQuestion: "", dynamicEvaluation: "", dynamicAccuracy: 0 };
       const prompt = `
 You are a friendly and insightful interviewer. Based on the candidate's response: "${candidateAnswer}",
 ask one natural follow-up question that delves deeper into their project experience without repeating the original question.
@@ -407,7 +360,7 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     }
   };
 
-  // --- Interview Flow ---
+  // Interview Flow
   const startInterview = async () => {
     if (questions.length === 0) {
       alert("Questions are still loading. Please wait.");
@@ -424,91 +377,115 @@ Evaluation: <your evaluation comment>. Accuracy: <percentage>%
     readQuestion();
   };
 
-  // Inside handleNextOrFinish (after processing the answer)
   const handleNextOrFinish = async () => {
     if (nextProcessing) return;
     setNextProcessing(true);
-    setApiProcessing(true); // Show API processing loader
-  
+    setApiProcessing(true);
+
     if (!questions[currentQuestion]) return;
-    const candidateAnswer = questions[currentQuestion].options
-      ? selectedOption || ""
-      : answer;
+
+    const candidateAnswer = questions[currentQuestion].options ? selectedOption || "" : answer;
     const currentResponse: ResponseData = {
       questionId: questions[currentQuestion].id,
-      text: questions[currentQuestion].text, // Add question text
-      answer: candidateAnswer, // Only the current answer is stored.
+      text: questions[currentQuestion].text,
+      answer: candidateAnswer,
       correctAnswer: questions[currentQuestion].correctAnswer,
     };
-  
+
     const validation = await validateCandidateAnswer(candidateAnswer, questions[currentQuestion]);
     currentResponse.answerValidation = validation;
-      
-    const { dynamicQuestion, dynamicEvaluation, dynamicAccuracy } =
-      await generateDynamicQuestion(candidateAnswer, questions[currentQuestion]);
-    if (dynamicQuestion) {
+
+    const { dynamicQuestion, dynamicEvaluation, dynamicAccuracy } = await generateDynamicQuestion(
+      candidateAnswer,
+      questions[currentQuestion]
+    );
+
+    if (dynamicQuestion && dynamicCount < 2) {
       currentResponse.dynamicEvaluation = dynamicEvaluation;
       currentResponse.dynamicAccuracy = dynamicAccuracy;
       const dynamicQ: Question = { id: Date.now(), text: dynamicQuestion };
       setQuestions((prev) => {
         const newArr = [...prev];
         newArr.splice(currentQuestion + 1, 0, dynamicQ);
+        console.log(`Inserted dynamic question ${dynamicQ.id}. New questions:`, newArr);
         return newArr;
       });
     }
-    setResponses((prev) => [...prev, currentResponse]);
+
+    // Stop recording and wait for the video URL
     stopVideoRecording();
-  
-    // Reset answer and selected option for the next question.
+    let videoUrl: string | undefined;
+    if (mediaRecorderRef.current && isRecording) {
+      videoUrl = await new Promise<string>((resolve) => {
+        mediaRecorderRef.current!.onstop = async () => {
+          const blob = new Blob(chunksRef.current, { type: "video/webm" });
+          const url = await uploadVideoToS3(blob);
+          resolve(url);
+        };
+      });
+    }
+
+    // Store the response with videoUrl in both state and ref
+    setResponses((prev) => {
+      const updatedResponses = [
+        ...prev.filter((r) => r.questionId !== currentResponse.questionId),
+        { ...currentResponse, videoUrl },
+      ];
+      responsesRef.current = updatedResponses; // Update ref
+      console.log(`Stored response for question ${currentResponse.questionId} with videoUrl. Responses:`, updatedResponses);
+      return updatedResponses;
+    });
+
     setAnswer("");
     setSelectedOption(null);
-    resetTranscript(); // This clears the voice transcript so it won't carry over
-  
-    // Remove API processing loader and then pause.
+    resetTranscript();
+
     setApiProcessing(false);
     setIsPaused(true);
     setPauseMessage("Processing your response...");
-  
+
     speechSynthesisRef.current?.cancel();
-  
+
     pauseTimerRef.current = window.setTimeout(() => {
       resumeInterview();
     }, 3000);
   };
-  
 
-// Also in resumeInterview, make sure the transcript and answer are reset:
-const resumeInterview = async () => {
-  setIsPaused(false);
-  setNextProcessing(false);
-  if (pauseTimerRef.current) {
-    clearTimeout(pauseTimerRef.current);
-    pauseTimerRef.current = null;
-  }
-  if (currentQuestion < questions.length - 1) {
-    setCurrentQuestion((prev) => prev + 1);
-    setAnswer("");       // Clear answer for next question
-    resetTranscript();   // Clear transcript from voice input
-    setTimeLeft(Math.floor(totalTime / questions.length));
-    await startVideoRecording();
-  } else {
-    // Last question answered; auto-submit.
-    setIsInterviewStarted(false);
-    submitInterview();
-  }
-};
+  const resumeInterview = async () => {
+    setIsPaused(false);
+    setNextProcessing(false);
+    if (pauseTimerRef.current) {
+      clearTimeout(pauseTimerRef.current);
+      pauseTimerRef.current = null;
+    }
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion((prev) => {
+        const next = prev + 1;
+        console.log(`Advancing to question ${next + 1}/${questions.length} (ID: ${questions[next].id})`);
+        return next;
+      });
+      setAnswer("");
+      setSelectedOption(null);
+      resetTranscript();
+      setTimeLeft(Math.floor(totalTime / questions.length));
+      await startVideoRecording();
+    } else {
+      console.log("All questions completed. Submitting interview with responses:", responsesRef.current);
+      setIsInterviewStarted(false);
+      submitInterview();
+    }
+  };
 
-
-  // --- Final Evaluation & Submission ---
+  // Final Evaluation & Submission
   const evaluateInterview = async () => {
-    const totalValidatedScore = responses.reduce((acc, res) => acc + (res.answerValidation?.score || 0), 0);
-    const avgValidatedScore = responses.length > 0 ? totalValidatedScore / responses.length : 0;
+    const totalValidatedScore = responsesRef.current.reduce((acc, res) => acc + (res.answerValidation?.score || 0), 0);
+    const avgValidatedScore = responsesRef.current.length > 0 ? totalValidatedScore / responsesRef.current.length : 0;
     setFinalScore(avgValidatedScore);
     return avgValidatedScore;
   };
 
   const submitInterview = async () => {
-    if (!email || responses.length === 0) {
+    if (!email || responsesRef.current.length === 0) {
       alert("Candidate ID or responses are missing. Please complete the interview before submitting.");
       return;
     }
@@ -519,25 +496,12 @@ const resumeInterview = async () => {
       const jobIdInt = parseInt(job.job_id || job.id, 10);
       await axios.post(
         CANDIDATE_STATUS_ENDPOINT,
-        { 
-          candidateId, 
-          companyId: job.company_id, 
-          jobId: jobIdInt,
-          status: candidateStatus 
-        },
+        { candidateId, companyId: job.company_id, jobId: jobIdInt, status: candidateStatus },
         { headers: { "Content-Type": "application/json" } }
       );
-      const payload = { 
-        candidateId, 
-        jobId: jobIdInt, 
-        responses, 
-        finalScore: avgValidatedScore 
-      };
-      await axios.post(
-        STORE_INTERVIEW_ENDPOINT,
-        payload,
-        { headers: { "Content-Type": "application/json" } }
-      );
+      const payload = { candidateId, jobId: jobIdInt, responses: responsesRef.current, finalScore: avgValidatedScore };
+      console.log("Submitting payload:", payload);
+      await axios.post(STORE_INTERVIEW_ENDPOINT, payload, { headers: { "Content-Type": "application/json" } });
       setSubmitted(true);
       setTimeout(() => {
         navigate("/candidate-dashboard", { state: { message: "Thanks for attending the interview, we will update you soon." } });
@@ -602,13 +566,7 @@ const resumeInterview = async () => {
           ) : (
             <div className="bg-[#1A1528] rounded-xl p-8 shadow-lg border border-gray-800">
               <div className="mb-8">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="w-full h-64 bg-black rounded-lg object-cover"
-                />
+                <video ref={videoRef} autoPlay muted playsInline className="w-full h-64 bg-black rounded-lg object-cover" />
               </div>
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-bold">
@@ -667,16 +625,13 @@ const resumeInterview = async () => {
                           Recording...
                         </span>
                       )}
-                      {isVoiceMode && !listening && (
-                        <span className="ml-2 text-green-400">Saved</span>
-                      )}
+                      {isVoiceMode && !listening && <span className="ml-2 text-green-400">Saved</span>}
                     </button>
                   </div>
                   <textarea
                     value={answer}
                     onChange={(e) => !isVoiceMode && setAnswer(e.target.value)}
                     placeholder={isVoiceMode ? "Speak your answer..." : "Type your answer..."}
-                    // Adding a fade-in animation class for the text
                     className="w-full h-32 px-4 py-2 bg-[#2A1528] border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent shadow-lg transition-all duration-500 animate-fadeIn"
                     readOnly={isVoiceMode}
                   />
