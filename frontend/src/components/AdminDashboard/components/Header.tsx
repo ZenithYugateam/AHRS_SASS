@@ -14,19 +14,7 @@ const Header: React.FC = () => {
       </div>
       
       <div className="flex items-center space-x-4">
-        <button className="relative">
-          <Bell className="h-6 w-6" />
-          <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
-        </button>
-        <div className="flex items-center">
-          <img 
-            src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" 
-            alt="Profile" 
-            className="h-8 w-8 rounded-full mr-2"
-          />
-          <span className="mr-1">Admin User</span>
-          <ChevronDown className="h-4 w-4" />
-        </div>
+
       </div>
     </header>
   );
