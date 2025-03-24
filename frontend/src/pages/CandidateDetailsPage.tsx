@@ -37,9 +37,9 @@ function Navbar() {
         </div>
         <div className="flex items-center space-x-6">
           <NavLink icon={<Home className="w-5 h-5" />} text="Home" to="/Company-dashboard" />
-          <NavLink icon={<Package className="w-5 h-5" />} text="Payments" to="/Company-dashboard?currentPage=packages" />
-            <NavLink icon={<Mic className="w-5 h-5" />} text="Interview Maker" to="/Company-dashboard?page=interview-maker" />
-          <NavLink icon={<User className="w-5 h-5" />} text="Profile" to="/profile" />  
+          <NavLink icon={<Package className="w-5 h-5" />} text="Packages" to="/packages" />
+          <NavLink icon={<Mic className="w-5 h-5" />} text="Interview Maker" to="/interview-maker" />
+          <NavLink icon={<User className="w-5 h-5" />} text="Profile" to="/profile" />
           <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
             Manage Subscription
           </button>
