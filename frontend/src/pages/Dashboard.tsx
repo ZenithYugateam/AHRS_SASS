@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Package,
   User,
@@ -25,7 +25,6 @@ import {
 import axios from "axios";
 import PaymentModal from "../components/StripePayment";
 import Companyprofile from "../components/Companyprofile/Companyprofile";
-import StatCard from "../components/StatCard";
 
 // Custom ChevronUp and ChevronDown components
 const ChevronUp = ({ size = 24, ...props }: { size?: number }) => (
@@ -112,16 +111,6 @@ interface CandidateRow {
 
 function Dashboard() {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // Read query parameters from URL and set currentPage accordingly
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const page = params.get("currentPage");
-    if (page) {
-      setCurrentPage(page);
-    }
-  }, [location.search]);
 
   // User details from session storage
   const [userName, setUserName] = useState<string | null>(null);
@@ -254,8 +243,7 @@ function Dashboard() {
       setIsLoading(false);
     }
   };
-
-  // Job active and delete
+  //Job active and delete
   const handleToggleJobStatus = (jobId: string) => {
     setJobStatuses((prevStatuses) => ({
       ...prevStatuses,
@@ -263,7 +251,7 @@ function Dashboard() {
     }));
   };
 
-  // Delete Job Call
+  // Delete Job  Call
   const handleDeleteJob = (jobId: string) => {
     setJobs((prevJobs) => prevJobs.filter((job) => job.job_id !== jobId));
   };
@@ -341,6 +329,7 @@ function Dashboard() {
 
   /**
    * Transform API response to populate pricing data.
+   * If the API does not provide an explicit features array, we build it dynamically.
    */
   const transformApiResponse = (apiData: any): PricingData => {
     if (!apiData) {
@@ -350,6 +339,7 @@ function Dashboard() {
       };
     }
 
+    // If API returns an object with both plans and tokenPackages, use them directly
     if (apiData.plans && apiData.tokenPackages) {
       return {
         plans: apiData.plans.map((item: any, index: number) => ({
@@ -357,6 +347,7 @@ function Dashboard() {
           name: item.name || `Plan ${index + 1}`,
           price: parseFloat(item.price) || 0,
           description: item.description || "",
+          // If features exist, use them; otherwise build from item tokens, duration, tokensPerMinute
           features: item.features?.length
             ? item.features
             : [
@@ -374,6 +365,7 @@ function Dashboard() {
       };
     }
 
+    // If API returns an array, assume it is a list of plans
     if (Array.isArray(apiData)) {
       const plans: SubscriptionPlan[] = apiData.map((item, index) => ({
         id: item.id || `plan-${index}`,
@@ -396,6 +388,7 @@ function Dashboard() {
       return { plans, tokenPackages: [] };
     }
 
+    // If the API returns a single plan object
     if (typeof apiData === "object" && apiData.id && apiData.name) {
       const plan: SubscriptionPlan = {
         id: apiData.id,
@@ -418,6 +411,7 @@ function Dashboard() {
       return { plans: [plan], tokenPackages: [] };
     }
 
+    // Default fallback
     return {
       plans: [],
       tokenPackages: [],
@@ -448,14 +442,11 @@ function Dashboard() {
     if (page !== "home") {
       setIsSubscriptionExpanded(false);
     }
-    // Update URL query parameter to reflect current page
-    navigate(`/Company-dashboard?currentPage=${page}`);
   };
 
   // Open Interview Maker
   const openInterviewMaker = () => {
     setCurrentPage("interview-maker");
-    navigate("/interview-maker");
   };
 
   // Handle applying to a job
@@ -704,8 +695,8 @@ function Dashboard() {
             href="#"
             className="flex items-center space-x-2 hover:text-purple-400"
             onClick={(e) => {
-              e.preventDefault();
-              navigate("/Companyprofile");
+              e.preventDefault(); // Prevent default link behavior
+              navigate("/Companyprofile"); // Navigate to the profile page
             }}
           >
             <User size={20} />
@@ -805,7 +796,6 @@ function Dashboard() {
               </>
             )}
 
-
             {currentPage === "packages" && (
               <>
                 <div className="mb-8">
@@ -874,6 +864,7 @@ function Dashboard() {
                             <button
                               className="bg-purple-900 text-white hover:bg-purple-800 px-4 py-2 rounded-md text-sm font-medium"
                               onClick={() => {
+                                // Example: If you have an enterprise plan with id "enterprise"
                                 const enterprisePlan = pricingData.plans.find(
                                   (p) => p.id === "enterprise"
                                 );
@@ -973,6 +964,7 @@ function Dashboard() {
                           </p>
                           <ul className="space-y-3 mb-6">
                             {plan.features.map((feature, index) => {
+                              // Example check for "API access" (if needed):
                               const isIncluded =
                                 !feature.includes("API access") ||
                                 plan.id === "enterprise";
@@ -1037,7 +1029,10 @@ function Dashboard() {
                           Need a Custom Solution?
                         </h3>
                         <p className="max-w-2xl">
-                          We offer tailored enterprise solutions for organizations with specific requirements. Our team will work with you to create a custom package that fits your needs.
+                          We offer tailored enterprise solutions for
+                          organizations with specific requirements. Our team
+                          will work with you to create a custom package that
+                          fits your needs.
                         </p>
                       </div>
                       <button className="mt-4 md:mt-0 bg-white text-purple-700 hover:bg-gray-100 px-6 py-3 rounded-md font-medium">
@@ -1076,6 +1071,7 @@ function Dashboard() {
                               <h2 className="text-xl font-bold">{job.title}</h2>
                             </div>
                             <div className="flex items-center gap-3">
+                              {/* Toggle Button for Active/Inactive */}
                               <button
                                 onClick={() =>
                                   handleToggleJobStatus(job.job_id)
@@ -1088,14 +1084,18 @@ function Dashboard() {
                               >
                                 {jobStatuses[job.job_id] === "active" ? (
                                   <>
-                                    <ToggleRight size={18} className="mr-1" /> Active
+                                    <ToggleRight size={18} className="mr-1" />{" "}
+                                    Active
                                   </>
                                 ) : (
                                   <>
-                                    <ToggleLeft size={18} className="mr-1" /> Inactive
+                                    <ToggleLeft size={18} className="mr-1" />{" "}
+                                    Inactive
                                   </>
                                 )}
                               </button>
+
+                              {/* Delete Button */}
                               <button
                                 onClick={() => handleDeleteJob(job.job_id)}
                                 className="text-red-500 hover:text-red-700"
@@ -1104,9 +1104,11 @@ function Dashboard() {
                               </button>
                             </div>
                           </div>
+
                           <p className="text-gray-300 mb-4 line-clamp-3">
                             {job.description || "No description available."}
                           </p>
+
                           <div className="flex flex-wrap gap-2 mb-4">
                             {job.experience && (
                               <span className="bg-gray-700 text-sm px-3 py-1 rounded-full">
@@ -1126,6 +1128,7 @@ function Dashboard() {
                               </div>
                             )}
                           </div>
+
                           <button
                             onClick={() => handleApply(job)}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition-colors"
@@ -1137,7 +1140,10 @@ function Dashboard() {
                     ) : (
                       <div className="col-span-3 text-center py-12">
                         <div className="mb-4">
-                          <Briefcase size={48} className="mx-auto text-gray-500" />
+                          <Briefcase
+                            size={48}
+                            className="mx-auto text-gray-500"
+                          />
                         </div>
                         <h3 className="text-xl font-medium mb-2">
                           No jobs found
@@ -1149,7 +1155,8 @@ function Dashboard() {
                           onClick={() => navigate("/post-job")}
                           className="mt-4 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md inline-flex items-center"
                         >
-                          <PlusCircle size={16} className="mr-2" /> Post a New Job
+                          <PlusCircle size={16} className="mr-2" /> Post a New
+                          Job
                         </button>
                       </div>
                     )}
@@ -1215,7 +1222,9 @@ function Dashboard() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-300">Interviews Conducted</p>
+                    <p className="text-sm text-gray-300">
+                      Interviews Conducted
+                    </p>
                     <div className="w-full bg-gray-600 rounded-full h-2.5">
                       <div
                         className="bg-blue-500 h-2.5 rounded-full"
@@ -1223,7 +1232,8 @@ function Dashboard() {
                       ></div>
                     </div>
                     <p className="text-xs text-right mt-1">
-                      {interviewsUsed} / {currentPlan ? currentPlan.interviews : 0}
+                      {interviewsUsed} /{" "}
+                      {currentPlan ? currentPlan.interviews : 0}
                     </p>
                   </div>
                 </div>
@@ -1266,9 +1276,9 @@ function Dashboard() {
           )}
         </div>
       )}
-     
     </div>
   );
 }
 
 export default Dashboard;
+

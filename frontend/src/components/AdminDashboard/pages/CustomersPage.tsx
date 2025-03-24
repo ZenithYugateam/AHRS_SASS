@@ -232,7 +232,7 @@ const CustomersPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="p-4 flex items-center space-x-2">
-                     
+                      <CircleDollarSign className="h-5 w-5 text-yellow-400" />
                       <span>{customer.tokensLeft}</span>
                     </td>
 
