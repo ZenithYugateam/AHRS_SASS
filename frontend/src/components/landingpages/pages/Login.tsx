@@ -79,10 +79,35 @@ function Login() {
 
   // For candidate signup: store the custom tags the user adds.
   const [candidatePreferences, setCandidatePreferences] = useState<string[]>([]);
+  // New states for college data and passout year
+  const [colleges, setColleges] = useState<string[]>([]);
+  const [selectedCollege, setSelectedCollege] = useState('');
+  const [passoutYear, setPassoutYear] = useState('');
 
   useEffect(() => {
     setActiveTab(validType);
   }, [validType]);
+
+  // Fetch college names if candidate is signing up
+  useEffect(() => {
+    if (activeTab === 'candidate' && isSignUp) {
+      fetch('https://ojphcamztk.execute-api.us-east-1.amazonaws.com/default/fetchcollege')
+        .then((res) => res.json())
+        .then((data) => {
+         
+          if (data && Array.isArray(data.college_names)) {
+            // Split each string by ',' and trim spaces to get separate entries
+            const splittedNames = data.college_names.flatMap((item) =>
+              item.split(',').map((name) => name.trim())
+            );
+            setColleges(splittedNames);
+          } else {
+            console.error('Unexpected response format:', data);
+          }
+        })
+        .catch((err) => console.error('Error fetching colleges:', err));
+    }
+  }, [activeTab, isSignUp]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,10 +122,13 @@ function Login() {
         // Update displayName for the user
         await updateProfile(userCredential.user, { displayName: username });
 
-        // For candidates, force role to "candidate" and include candidatePreferences.
-        // For non-candidates, use the value from the select dropdown.
+        // For candidates, force role to "candidate" and include candidatePreferences,
+        // selectedCollege, and passoutYear. For non-candidates, use the value from the select dropdown.
         const signupRole = activeTab === 'candidate' ? 'candidate' : role;
-        const extraData = activeTab === 'candidate' ? { candidatePreferences } : {};
+        const extraData =
+          activeTab === 'candidate'
+            ? { candidatePreferences, selectedCollege, passoutYear }
+            : {};
 
         // **Store user details in Firestore**
         await setDoc(doc(db, 'users', userCredential.user.uid), {
@@ -183,7 +211,12 @@ function Login() {
           <p className="text-gray-400">{isSignUp ? 'Create an account' : 'Sign in to continue'}</p>
         </div>
 
-        <Tabs defaultValue={validType} value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs
+          defaultValue={validType}
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full"
+        >
           <TabsList className="grid grid-cols-3 mb-6">
             <TabsTrigger
               value="admin"
@@ -255,7 +288,39 @@ function Login() {
                           <p className="block text-sm font-medium text-white">
                             Add your job interest tags
                           </p>
-                          <TagsInput tags={candidatePreferences} setTags={setCandidatePreferences} />
+                          <TagsInput
+                            tags={candidatePreferences}
+                            setTags={setCandidatePreferences}
+                          />
+
+                          <div className="mt-4">
+                            <label className="block text-sm font-medium">College Name</label>
+                            <select
+                              className="w-full p-2 rounded-md bg-gray-800 text-white"
+                              value={selectedCollege}
+                              onChange={(e) => setSelectedCollege(e.target.value)}
+                              required
+                            >
+                              <option value="">Select College</option>
+                              {colleges.map((college, index) => (
+                                <option key={index} value={college}>
+                                  {college}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="mt-4">
+                            <label className="block text-sm font-medium">Pass Out Year</label>
+                            <Input
+                              type="number"
+                              placeholder="Enter your pass out year"
+                              className="bg-gray-800"
+                              value={passoutYear}
+                              onChange={(e) => setPassoutYear(e.target.value)}
+                              required
+                            />
+                          </div>
                         </>
                       ) : (
                         <div>
@@ -329,7 +394,7 @@ function Login() {
                     className="text-sm text-purple-400 hover:text-purple-300"
                     onClick={() => setIsSignUp(!isSignUp)}
                   >
-                    {isSignUp ? 'Already have an account? Sign In' : 'Don\'t have an account? Sign Up'}
+                    {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
                   </button>
                 </div>
               </form>
