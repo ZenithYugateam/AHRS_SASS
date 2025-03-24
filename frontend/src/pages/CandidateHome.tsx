@@ -122,8 +122,17 @@ function CandidateHome() {
   
     // Apply "My College Posts Only" filter
     if (myCollegePost) {
-      filtered = filtered.filter((job) => job.private_job === true && job.college_names?.includes("KMIT"));
+      // Retrieve user data from session storage and parse it
+      const storedUser = sessionStorage.getItem("user");
+      const userData = storedUser ? JSON.parse(storedUser) : null;
+      // Get the selected college from userData
+      const candidateCollege = userData ? userData.selectedCollege : "";
+    
+      filtered = filtered.filter(
+        (job) => job.private_job === true && job.college_names?.includes(candidateCollege)
+      );
     }
+    
   
     setFilteredJobs(filtered);
   
@@ -161,8 +170,17 @@ function CandidateHome() {
       );
     }
     if (myCollegePost) {
-      prefMatches = prefMatches.filter((job) => job.private_job === true && job.college_names?.includes("KMIT"));
+      // Retrieve user data from session storage and parse it
+      const storedUser = sessionStorage.getItem("user");
+      const userData = storedUser ? JSON.parse(storedUser) : null;
+      // Get the selected college from userData
+      const candidateCollege = userData ? userData.selectedCollege : "";
+    
+      filtered = filtered.filter(
+        (job) => job.private_job === true && job.college_names?.includes(candidateCollege)
+      );
     }
+    
   
     // Apply sorting for preferences
     if (sortByNewest) {
