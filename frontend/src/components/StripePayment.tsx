@@ -39,8 +39,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
       // Get the current date in ISO string format
       const currentDate = new Date().toISOString();
+      // Generate a unique subscriptionId (using timestamp for simplicity)
+      const subscriptionId = Date.now().toString();
 
-      // Construct payload including the date for payments and subscriptions
+      // Construct payload including subscriptionId
       const payload = {
         email: email, // Top-level email
         paymentDetails: {
@@ -49,31 +51,36 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           currency: "USD",
           transactionId: response.razorpay_payment_id,
           paymentMethod: "card",
-          date: currentDate // Added date for payment
+          date: currentDate,
+          subscriptionType: subscriptionType // Added to match Lambda expectation
         },
         subscriptionDetails: {
           email: email,
           type: subscriptionType,
           tokensPurchased: tokensPurchased,
           tokensLeft: tokensPurchased,
-          date: currentDate // Added date for subscription
+          date: currentDate,
+          subscriptionId: subscriptionId // Added subscriptionId
         }
       };
 
       // Log payload for debugging
       console.log("Final Payment Payload:", JSON.stringify(payload, null, 2));
 
-      // POST the payload (including email and date in both sections) to your API
-      await axios.post(
+      // POST the payload to your API
+      const apiResponse = await axios.post(
         "https://l8kyqmz0fc.execute-api.us-east-1.amazonaws.com/default/test",
         payload
       );
+      console.log("API Response:", apiResponse.data);
 
       setIsProcessing(false);
       onSuccess();
     } catch (err) {
       console.error("Error processing payment:", err);
-      setError("Failed to process payment. Please try again.");
+      setError(
+        err.response?.data?.message || "Failed to process payment. Please try again."
+      );
       setIsProcessing(false);
     }
   };
@@ -90,14 +97,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       const options = {
         key: "rzp_test_DT1FmIE6tqtiAQ", // Replace with your Razorpay key
         amount: amount * 100, // Amount in smallest currency unit (e.g., paise)
-        currency: "INR",
+        currency: "INR", // Note: Update to "USD" if your backend expects USD
         name: "AI Interview Platform",
         description: description,
         image: "https://your-company-logo.png", // Replace with your logo URL
         handler: (response: any) => {
           handlePaymentSuccess(response);
         },
-        // Prefill the checkout with the user's email
         prefill: {
           email: email
         },
@@ -109,7 +115,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
             onClose();
           }
         },
-        // Enable all payment methods (cards, netbanking, UPI, wallets)
         method: {
           card: true,
           netbanking: true,
