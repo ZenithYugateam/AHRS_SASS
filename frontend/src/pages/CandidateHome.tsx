@@ -15,6 +15,8 @@ interface Job {
   posted_on?: string;
   job_posted?: string;
   approval?: boolean;
+  private_job?:boolean;
+  college_names?: string;
 }
 
 function CandidateHome() {
@@ -28,6 +30,8 @@ function CandidateHome() {
 
   const [isJobsDropdownOpen, setIsJobsDropdownOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [myCollegePost, setMyCollegePost] = useState(false);
+
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
@@ -115,8 +119,15 @@ function CandidateHome() {
         return dateB - dateA;
       });
     }
+  
+    // Apply "My College Posts Only" filter
+    if (myCollegePost) {
+      filtered = filtered.filter((job) => job.private_job === true && job.college_names?.includes("KMIT"));
+    }
+  
     setFilteredJobs(filtered);
-
+  
+    // Preference-based filtering for "filteredPreferenceMatches"
     let prefMatches = jobData.filter((job) => {
       if (!jobPreferences || jobPreferences.length === 0) return false;
       return jobPreferences.some((pref) => {
@@ -127,7 +138,8 @@ function CandidateHome() {
         );
       });
     });
-
+  
+    // Apply the same filters to "prefMatches"
     if (searchQuery) {
       prefMatches = prefMatches.filter((job) =>
         job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -148,6 +160,11 @@ function CandidateHome() {
         )
       );
     }
+    if (myCollegePost) {
+      prefMatches = prefMatches.filter((job) => job.private_job === true && job.college_names?.includes("KMIT"));
+    }
+  
+    // Apply sorting for preferences
     if (sortByNewest) {
       prefMatches.sort((a, b) => {
         const dateA = new Date(a.posted_on || a.job_posted || Date.now()).getTime();
@@ -155,8 +172,11 @@ function CandidateHome() {
         return dateB - dateA;
       });
     }
+  
     setFilteredPreferenceMatches(prefMatches);
-  }, [searchQuery, selectedLocation, selectedTags, sortByNewest, jobData, jobPreferences]);
+  
+  }, [searchQuery, selectedLocation, selectedTags, sortByNewest, jobData, jobPreferences, myCollegePost]);
+  
 
   const renderJobCard = (job: Job, index: number) => (
     <motion.div
@@ -333,6 +353,15 @@ function CandidateHome() {
                          focus:outline-none focus:ring-2 focus:ring-[#F700FC]"
             />
             <div className="flex flex-wrap gap-4">
+            <label className="flex items-center text-white">
+    <input
+      type="checkbox"
+      checked={myCollegePost}
+      onChange={() => setMyCollegePost((prev) => !prev)}
+      className="mr-2"
+    />
+    My College Posts Only
+  </label>
               <select
                 value={selectedLocation}
                 onChange={(e) => setSelectedLocation(e.target.value)}
