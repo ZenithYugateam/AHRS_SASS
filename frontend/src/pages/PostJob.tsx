@@ -15,6 +15,8 @@ function PostJob() {
     salary: '',
     location: '',
     approvalRequired: false,
+    privateJob: false,
+    collegeNames: '',
   });
 
   useEffect(() => {
@@ -208,6 +210,34 @@ function PostJob() {
                 <span className="ml-3 text-sm font-medium text-gray-300">Approval Required</span>
               </label>
             </div>
+
+            <div className="flex items-center gap-4">
+              <label className="block text-sm font-medium text-gray-300">Private Job</label>
+              <input
+                type="checkbox"
+                name="privateJob"
+                checked={formData.privateJob}
+                onChange={handleChange}
+                className="toggle-checkbox"
+              />
+            </div>
+
+            {formData.privateJob && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  College Names
+                </label>
+                <textarea
+                  name="collegeNames"
+                  value={formData.collegeNames}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
+                  placeholder="Enter college names separated by commas"
+                  rows={3}
+                />
+              </div>
+            )}
+
 
             <div className="flex justify-end gap-4 pt-6">
               <button
