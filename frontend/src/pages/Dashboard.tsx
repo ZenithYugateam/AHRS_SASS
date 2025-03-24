@@ -692,6 +692,7 @@ function Dashboard() {
             <Package size={20} />
             <span>Packages</span>
           </a>
+
           <a
             href="#"
             className="flex items-center space-x-2 hover:text-purple-400"
@@ -758,7 +759,7 @@ function Dashboard() {
                         </p>
                         <button
                           className="text-white hover:underline"
-                          onClick={() => navigate("/interview-maker")}
+                          onClick={() => navigate("/total-interview")}
                         >
                           View Details
                         </button>
@@ -776,8 +777,7 @@ function Dashboard() {
                         <p className="text-sm mb-4">
                           {totalParticipants} Applications
                         </p>
-                        <button className="text-white hover:underline"
-                        onClick={() => navigate("/total-interview")}>
+                        <button className="text-white hover:underline">
                           View Details
                         </button>
                       </div>
