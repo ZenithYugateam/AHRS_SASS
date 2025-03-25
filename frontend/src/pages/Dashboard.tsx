@@ -388,7 +388,6 @@ function Dashboard() {
       return { plans, tokenPackages: [] };
     }
 
-    // If the API returns a single plan object
     if (typeof apiData === "object" && apiData.id && apiData.name) {
       const plan: SubscriptionPlan = {
         id: apiData.id,

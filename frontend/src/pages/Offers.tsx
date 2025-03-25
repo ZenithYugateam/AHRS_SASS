@@ -84,7 +84,7 @@ function Offers() {
     }
   }, []);
 
-  // Fetch initial offers from pass_or_fail API and update them with candidate status from getnightstatus API
+  // Fetch initial offers from pass_or_fail API and update with candidate status from getnightstatus API
   const fetchOffers = async (candidateEmail: string) => {
     try {
       const response = await axios.get(

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-// Status badge component
+// Status badge components
 const StatusBadge = ({ status, type }) => {
   const getStatusColor = () => {
     switch (type) {
