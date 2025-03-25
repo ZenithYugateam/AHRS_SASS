@@ -15,15 +15,15 @@ import {
 import { motion } from 'framer-motion';
 
 // Status badge component
-const StatusBadge = ({ statusText, type }: { statusText: string; type: 'success' | 'rejected' | 'pending' }) => {
+const StatusBadge = ({ statusText, type }) => {
   const getStatusColor = () => {
     switch (type) {
       case 'success':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-500/80 text-white'; // Updated to match screenshot
       case 'rejected':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-500/80 text-white'; // Updated to match screenshot
       default:
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-500/80 text-white'; // Updated to match screenshot
     }
   };
 
@@ -48,8 +48,8 @@ const StatusBadge = ({ statusText, type }: { statusText: string; type: 'success'
 };
 
 function Offers() {
-  const [offers, setOffers] = useState<any[]>([]);
-  const [filteredOffers, setFilteredOffers] = useState<any[]>([]);
+  const [offers, setOffers] = useState([]);
+  const [filteredOffers, setFilteredOffers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [username, setUsername] = useState("User");
@@ -62,7 +62,6 @@ function Offers() {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
-  // Retrieve user data and candidate email from session storage
   useEffect(() => {
     const storedUserData = sessionStorage.getItem("user");
     if (storedUserData) {
@@ -84,8 +83,7 @@ function Offers() {
     }
   }, []);
 
-  // Fetch initial offers from pass_or_fail API and update with candidate status from getnightstatus API
-  const fetchOffers = async (candidateEmail: string) => {
+  const fetchOffers = async (candidateEmail) => {
     try {
       const response = await axios.get(
         `https://8psobgwfh2.execute-api.us-east-1.amazonaws.com/default/pass_or_fail`,
@@ -93,20 +91,18 @@ function Offers() {
       );
       console.log("API Response:", response.data);
 
-      // Transform the API response to match expected structure
-      const fetchedOffers = response.data.candidateJobs.map((job: any) => {
-        const candidate = job.candidateList.find((c: any) => c.candidateId === candidateEmail);
+      const fetchedOffers = response.data.candidateJobs.map((job) => {
+        const candidate = job.candidateList.find((c) => c.candidateId === candidateEmail);
         return {
           job_id: job.job_id,
           title: job.title || "Untitled Job",
-          companyName: job.company_id, // using company_id as company identifier
+          companyName: job.company_id,
           description: job.description || "No description available",
           date: job.posted_on || "",
           status: candidate ? candidate.status : null,
         };
       });
 
-      // Update offers with candidate status from the getnightstatus API.
       const updatedOffers = await Promise.all(
         fetchedOffers.map(async (offer) => {
           try {
@@ -120,7 +116,6 @@ function Offers() {
               }
             );
             const data = statusResponse.data;
-            // Expect the lambda to return { candidateId, jobId, managerMessage, status, timestamp }
             if (data && data.status !== undefined && data.status !== null) {
               return {
                 ...offer,
@@ -149,7 +144,6 @@ function Offers() {
     }
   };
 
-  // Filter and sort offers based on search, status, and company
   useEffect(() => {
     let filtered = [...offers];
 
@@ -180,7 +174,7 @@ function Offers() {
       filtered.sort((a, b) => {
         const dateA = new Date(a.date || Date.now()).getTime();
         const dateB = new Date(b.date || Date.now()).getTime();
-        return dateB - dateA; // Newest first
+        return dateB - dateA;
       });
     }
 
@@ -208,7 +202,6 @@ function Offers() {
     navigate('/candidate-dashboard');
   };
 
-  // Loading card animation variant
   const loadingCardVariants = {
     animate: {
       boxShadow: [
@@ -226,7 +219,6 @@ function Offers() {
 
   return (
     <div className="min-h-screen bg-[#0F0B1E]">
-      {/* Navigation Bar */}
       <nav className="bg-[#1A1528] py-4 px-6 shadow-md">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="text-white font-bold text-2xl">247 Interview.com</div>
@@ -291,9 +283,7 @@ function Offers() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
         <section className="mb-8">
           <h2 className="text-3xl font-bold text-white">
             Hi, <span className="text-purple-400">{username}</span>
@@ -303,7 +293,6 @@ function Offers() {
           </p>
         </section>
 
-        {/* Filters and Search */}
         <section className="mb-8">
           <div className="flex flex-col gap-4">
             <input
@@ -347,7 +336,6 @@ function Offers() {
           </div>
         </section>
 
-        {/* Offers Section */}
         <section>
           <h2 className="text-2xl font-semibold text-white mb-4 flex items-center">
             <Briefcase className="mr-2" /> Offers
@@ -357,19 +345,10 @@ function Offers() {
               {[...Array(3)].map((_, index) => (
                 <motion.div
                   key={index}
-                  className="rounded-lg overflow-hidden bg-gradient-to-br from-[#F700FC] to-[#2941B9]"
+                  className="w-[350px] h-[400px] bg-[#1E1A2B] rounded-2xl animate-pulse"
                   variants={loadingCardVariants}
                   animate="animate"
-                >
-                  <div className="p-6 bg-[#16213e] bg-opacity-95">
-                    <div className="h-6 bg-gray-600 rounded w-3/4 mb-4"></div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-gray-600 rounded w-1/2"></div>
-                      <div className="h-4 bg-gray-600 rounded w-2/3"></div>
-                      <div className="h-4 bg-gray-600 rounded w-1/3"></div>
-                    </div>
-                  </div>
-                </motion.div>
+                />
               ))}
             </div>
           ) : error ? (
@@ -380,7 +359,7 @@ function Offers() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               {filteredOffers.map((offer, index) => {
                 let statusText = "";
-                let badgeType: 'success' | 'rejected' | 'pending' = 'pending';
+                let badgeType = 'pending';
                 if (offer.status === 10) {
                   statusText = "Interview Selected";
                   badgeType = "success";
@@ -395,44 +374,61 @@ function Offers() {
                 return (
                   <motion.div
                     key={offer.job_id || index}
-                    className="rounded-lg overflow-hidden shadow-lg bg-gradient-to-br from-[#F700FC] to-[#2941B9] hover:shadow-xl transition-shadow duration-300"
+                    className="w-[350px] h-[400px] bg-[#1E1A2B] rounded-2xl p-6 shadow-inner hover:shadow-[0_0_15px_rgba(247,0,252,0.5)] transition-all duration-300 cursor-pointer relative overflow-hidden"
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                    whileHover={{ scale: 1.02, y: -5 }}
+                    transition={{ duration: 0.5, delay: index * 0.1, type: "spring" }}
                   >
-                    <div className="p-6 bg-[#16213e] bg-opacity-95">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-xl font-bold text-white truncate">{offer.title}</h3>
-                        <StatusBadge statusText={statusText} type={badgeType} />
+                    <div className="h-2 w-full bg-gradient-to-r from-[#F700FC] to-[#2941B9] rounded-t-lg absolute top-0 left-0" />
+                    <div className="absolute top-4 right-4">
+                      <StatusBadge statusText={statusText} type={badgeType} />
+                    </div>
+                    <div className="mt-8">
+                      <motion.h3
+                        className="text-2xl font-bold text-white line-clamp-2"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        {offer.title}
+                      </motion.h3>
+                      <div className="inline-block bg-[#F700FC]/20 text-white text-sm font-medium px-3 py-1 rounded-full mt-2">
+                        {offer.companyName || "Unknown Company"}
                       </div>
-                      <div className="space-y-2 mb-4 text-gray-300">
-                        <div className="flex items-center">
-                          <Building className="w-4 h-4 mr-2" />
-                          <span>{offer.companyName || 'Unknown Company'}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Calendar className="w-4 h-4 mr-2" />
-                          <span>{offer.date ? new Date(offer.date).toLocaleDateString() : 'N/A'}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Clock className="w-4 h-4 mr-2" />
-                          <span className="line-clamp-2">{offer.description}</span>
-                        </div>
+                      <p className="text-[14px] text-gray-400 mt-2">
+                        {offer.date ? new Date(offer.date).toDateString() : "N/A"}
+                      </p>
+                    </div>
+                    <div className="mt-4 flex flex-col gap-2 text-base text-[#B0B0B0]">
+                      <div className="flex items-center gap-2">
+                        <Building className="h-5 w-5 text-[#F700FC]" />
+                        <span className="line-clamp-1">{offer.companyName || "N/A"}</span>
                       </div>
-                      <div className="flex flex-col gap-2 pt-4 border-t border-gray-700">
-                        {offer.status === 10 ? (
-                          <div className="w-full px-4 py-2 bg-green-600 text-white rounded text-center">
-                            Viewed and approved by the company. Info will be updated soon.
-                          </div>
-                        ) : offer.status === 0 ? (
-                          <button
-                            className="w-full px-4 py-2 bg-gray-500 text-white rounded cursor-not-allowed"
-                            disabled
-                          >
-                            No Further Action
-                          </button>
-                        ) : null}
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-[#F700FC]" />
+                        <span className="line-clamp-1">
+                          {offer.date ? new Date(offer.date).toDateString() : "N/A"}
+                        </span>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-[#F700FC]" />
+                        <span className="text-[16px] line-clamp-2">{offer.description}</span>
+                      </div>
+                    </div>
+                    <div className="absolute bottom-6 left-6 right-6">
+                      {offer.status === 10 ? (
+                        <div className="w-full px-4 py-2 bg-green-600 text-white rounded text-center text-sm">
+                          Viewed and approved by the company. Info will be updated soon.
+                        </div>
+                      ) : offer.status === 0 ? (
+                        <button
+                          className="w-full px-4 py-2 bg-gray-500 text-white rounded cursor-not-allowed text-sm"
+                          disabled
+                        >
+                          No Further Action
+                        </button>
+                      ) : null}
                     </div>
                   </motion.div>
                 );
