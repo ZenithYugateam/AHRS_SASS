@@ -715,11 +715,10 @@ function Dashboard() {
               <span className="font-bold">Z</span>
             </div>
             <button
-              className="text-gray-400 hover:text-red-500 text-white px-4 py-2 rounded-md cursor-pointer"
+              className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
               onClick={handleLogout}
-              title="Logout"
             >
-              <LogOut size={24} /> Logout
+              Logout
             </button>
           </div>
         </div>
@@ -1050,57 +1049,54 @@ function Dashboard() {
             )}
 
             {currentPage === "interview-maker" && (
-              <div className="min-h-screen bg-gray-900 text-white p-8">
-                <div className="flex justify-end mb-8">
+              <div className="min-h-screen bg-gray-900 text-white p-6 md:p-8">
+                {/* Header Section */}
+                <div className="bg-gray-800 shadow-lg rounded-lg p-6 mb-8 flex flex-col md:flex-row justify-between items-center">
+                  <h1 className="text-3xl md:text-4xl font-bold text-purple-300 mb-4 md:mb-0">
+                    Company Posted Jobs
+                  </h1>
                   <button
                     onClick={() => navigate("/post-job")}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#1A1528] text-white border border-gray-700 rounded-lg hover:bg-[#2A2538] transition-colors"
+                    className="flex items-center gap-2 px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-md"
                   >
                     <PlusCircle size={20} /> Post New Job
                   </button>
                 </div>
+
+                {/* Jobs Grid */}
                 <div className="max-w-7xl mx-auto">
-                  <h1 className="text-4xl font-bold mb-8">
-                    Company Posted Jobs
-                  </h1>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {jobs.length > 0 ? (
                       jobs.map((job) => (
                         <div
                           key={job.job_id}
-                          className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-all duration-300"
+                          className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-all duration-300 shadow-md"
                         >
+                          {/* Job Title and Actions */}
                           <div className="flex justify-between items-center mb-4">
                             <div className="flex items-center">
-                              <Briefcase className="mr-2" />
-                              <h2 className="text-xl font-bold">
+                              <Briefcase className="mr-2 text-purple-400" size={20} />
+                              <h2 className="text-xl font-semibold text-white">
                                 {job.title}
                               </h2>
                             </div>
                             <div className="flex items-center gap-3">
                               {/* Toggle Button for Active/Inactive */}
                               <button
-                                onClick={() =>
-                                  handleToggleJobStatus(job.job_id)
-                                }
-                                className={`flex items-center px-3 py-1 rounded-full transition-colors ${
+                                onClick={() => handleToggleJobStatus(job.job_id)}
+                                className={`flex items-center px-3 py-1 rounded-full text-sm transition-colors ${
                                   jobStatuses[job.job_id] === "active"
-                                    ? "bg-green-600"
-                                    : "bg-red-600"
+                                    ? "bg-green-600 hover:bg-green-700"
+                                    : "bg-red-600 hover:bg-red-700"
                                 }`}
                               >
                                 {jobStatuses[job.job_id] === "active" ? (
                                   <>
-                                    <ToggleRight
-                                      size={18}
-                                      className="mr-1"
-                                    />{" "}
-                                    Active
+                                    <ToggleRight size={16} className="mr-1" /> Active
                                   </>
                                 ) : (
                                   <>
-                                    <ToggleLeft size={18} className="mr-1" />{" "}
-                                    Inactive
+                                    <ToggleLeft size={16} className="mr-1" /> Inactive
                                   </>
                                 )}
                               </button>
@@ -1108,66 +1104,65 @@ function Dashboard() {
                               {/* Delete Button */}
                               <button
                                 onClick={() => handleDeleteJob(job.job_id)}
-                                className="text-red-500 hover:text-red-700"
+                                className="text-red-500 hover:text-red-600 transition-colors"
                               >
                                 <Trash size={20} />
                               </button>
                             </div>
                           </div>
 
-                          <p className="text-gray-300 mb-4 line-clamp-3">
+                          {/* Job Description */}
+                          <p className="text-gray-300 text-sm mb-4 line-clamp-3">
                             {job.description || "No description available."}
                           </p>
 
-                          {/* Updated Attributes Section */}
-                          <div className="flex gap-4 mb-4">
+                          {/* Attributes Section - Aligned in a Single Row */}
+                          <div className="flex flex-wrap gap-3 mb-4">
                             {job.experience && (
-                              <span className="bg-gray-700 text-sm px-3 py-1 rounded-full w-32 flex items-center justify-center">
-                                {job.experience}
-                              </span>
+                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
+                                <Briefcase size={12} className="mr-1 text-purple-400" />
+                                <span>{job.experience}</span>
+                              </div>
                             )}
                             {job.location && (
-                              <div className="bg-gray-700 text-sm px-3 py-1 rounded-full w-32 flex items-center justify-center">
-                                <MapPin size={14} className="mr-1" />
+                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
+                                <MapPin size={12} className="mr-1 text-purple-400" />
                                 <span>{job.location}</span>
                               </div>
                             )}
                             {job.salary && (
-                              <div className="bg-gray-700 text-sm px-3 py-1 rounded-full w-32 flex items-center justify-center">
-                                <DollarSign size={14} className="mr-1" />
+                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
+                                <DollarSign size={12} className="mr-1 text-purple-400" />
                                 <span>{job.salary}</span>
                               </div>
                             )}
                           </div>
 
+                          {/* Set Interview Button */}
                           <button
                             onClick={() => handleApply(job)}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition-colors"
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition-colors font-medium"
                           >
-                            SET INTERVIEW
+                            Set Interview
                           </button>
                         </div>
                       ))
                     ) : (
-                      <div className="col-span-3 text-center py-12">
+                      <div className="col-span-1 sm:col-span-2 lg:col-span-3 text-center py-12 bg-gray-800 rounded-lg shadow-md">
                         <div className="mb-4">
-                          <Briefcase
-                            size={48}
-                            className="mx-auto text-gray-500"
-                          />
+                          <Briefcase size={48} className="mx-auto text-gray-500" />
                         </div>
-                        <h3 className="text-xl font-medium mb-2">
-                          No jobs found
+                        <h3 className="text-xl font-medium mb-2 text-gray-200">
+                          No Jobs Found
                         </h3>
-                        <p className="text-gray-400">
+                        <p className="text-gray-400 mb-4">
                           There are currently no jobs posted by your company.
                         </p>
                         <button
                           onClick={() => navigate("/post-job")}
-                          className="mt-4 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md inline-flex items-center"
+                          className="bg-purple-600 hover:bg-purple-700 px-5 py-2 rounded-lg inline-flex items-center text-white font-medium"
                         >
-                          <PlusCircle size={16} className="mr-2" /> Post a New
-                          Job
+                          <PlusCircle size={16} className="mr-2" /> Post a New Job
                         </button>
                       </div>
                     )}

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-// Status badge component
+// Status badge component (unchanged)
 const StatusBadge = ({ status, type }) => {
   const getStatusColor = () => {
     switch (type) {
@@ -105,7 +105,7 @@ function AppliedJobs() {
 
     if (selectedStatus) {
       filtered = filtered.filter((job) => {
-        if (selectedStatus === "Interview") return job.status === 10; // Maps to "Eligible"
+        if (selectedStatus === "Interview") return job.status === 10;
         if (selectedStatus === "Rejected") return job.status === 5;
         if (selectedStatus === "Pending") return job.status !== 5 && job.status !== 10;
         return true;
@@ -260,7 +260,7 @@ function AppliedJobs() {
                 className="p-2 rounded-lg bg-[#1A1528] text-white focus:outline-none"
               >
                 <option value="">All Statuses</option>
-                <option value="Interview">Eligible</option> {/* Changed to "Eligible" */}
+                <option value="Interview">Eligible</option>
                 <option value="Rejected">Rejected</option>
                 <option value="Pending">Pending</option>
               </select>
@@ -315,7 +315,7 @@ function AppliedJobs() {
                   statusText = "Rejected";
                   statusType = "rejected";
                 } else if (job.status === 10) {
-                  statusText = "Eligible"; // Changed from "Interview" to "Eligible" to match CandidateHome
+                  statusText = "Eligible";
                   statusType = "success";
                 } else {
                   statusText = "Pending";
@@ -334,7 +334,6 @@ function AppliedJobs() {
                     transition={{ duration: 0.5, delay: index * 0.1, type: "spring" }}
                   >
                     <div className="h-2 w-full bg-gradient-to-r from-[#F700FC] to-[#2941B9] rounded-t-lg absolute top-0 left-0" />
-                    {/* Status Badge in Top-Right Corner */}
                     <div className="absolute top-4 right-4">
                       <StatusBadge status={statusText} type={statusType} />
                     </div>
@@ -365,7 +364,6 @@ function AppliedJobs() {
                           {job.posted_on ? new Date(job.posted_on).toDateString() : "N/A"}
                         </span>
                       </div>
-                      {/* Status Line in Details Section */}
                       <div className="flex items-center gap-2">
                         <AlertCircle className="h-5 w-5 text-[#F700FC]" />
                         <span className="line-clamp-1">{statusText}</span>
@@ -379,9 +377,9 @@ function AppliedJobs() {
                       {(job.status === null || job.status < 5) && (
                         <button
                           className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
-                          onClick={() => navigate('/upload-resume', { state: { job, email: JSON.parse(sessionStorage.getItem("user") || "{}").email } })}
+                          onClick={() => navigate('/interview', { state: { job, email: JSON.parse(sessionStorage.getItem("user") || "{}").email } })}
                         >
-                          Upload Resume
+                          Start Test
                         </button>
                       )}
                       {job.status === 10 && (
