@@ -7,16 +7,16 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-// Status badge components
+// Status badge component
 const StatusBadge = ({ status, type }) => {
   const getStatusColor = () => {
     switch (type) {
       case 'success':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-500/80 text-white';
       case 'rejected':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-500/80 text-white';
       default:
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-500/80 text-white';
     }
   };
 
@@ -33,7 +33,7 @@ const StatusBadge = ({ status, type }) => {
   };
 
   return (
-    <span className={`flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor()}`}>
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor()}`}>
       {getStatusIcon()}
       {status}
     </span>
@@ -80,7 +80,7 @@ function AppliedJobs() {
         `https://wfm4lgpdh2.execute-api.us-east-1.amazonaws.com/default/get_applied_job_by_candidate`,
         { candidateId }
       );
-      console.log("API Response:", response.data); // Log for debugging
+      console.log("API Response:", response.data);
       const jobs = response.data.candidateJobs || [];
       setAppliedJobs(jobs);
       setFilteredJobs(jobs);
@@ -92,11 +92,9 @@ function AppliedJobs() {
     }
   };
 
-  // Dynamic Global Filters and Search
   useEffect(() => {
     let filtered = [...appliedJobs];
 
-    // Global Search Filter
     if (searchQuery) {
       filtered = filtered.filter((job) =>
         (job.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
@@ -105,29 +103,26 @@ function AppliedJobs() {
       );
     }
 
-    // Status Filter
     if (selectedStatus) {
       filtered = filtered.filter((job) => {
-        if (selectedStatus === "Interview") return job.status === 10;
+        if (selectedStatus === "Interview") return job.status === 10; // Maps to "Eligible"
         if (selectedStatus === "Rejected") return job.status === 5;
         if (selectedStatus === "Pending") return job.status !== 5 && job.status !== 10;
         return true;
       });
     }
 
-    // Company Filter
     if (selectedCompany) {
       filtered = filtered.filter((job) =>
         (job.company_id?.toLowerCase() || "").includes(selectedCompany.toLowerCase())
       );
     }
 
-    // Sort by Date
     if (sortByDate) {
       filtered.sort((a, b) => {
         const dateA = new Date(a.posted_on || Date.now()).getTime();
         const dateB = new Date(b.posted_on || Date.now()).getTime();
-        return dateB - dateA; // Newest first
+        return dateB - dateA;
       });
     }
 
@@ -158,7 +153,6 @@ function AppliedJobs() {
     navigate('/candidate-dashboard');
   };
 
-  // Loading shadow animation variant
   const loadingCardVariants = {
     animate: {
       boxShadow: [
@@ -176,7 +170,6 @@ function AppliedJobs() {
 
   return (
     <div className="min-h-screen bg-[#0F0B1E]">
-      {/* Navigation Bar */}
       <nav className="bg-[#1A1528] py-4 px-6 shadow-md">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="text-white font-bold text-2xl">247 Interview.com</div>
@@ -241,9 +234,7 @@ function AppliedJobs() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
         <section className="mb-8">
           <h2 className="text-3xl font-bold text-white">
             Hi, <span className="text-purple-400">{username}</span>
@@ -253,7 +244,6 @@ function AppliedJobs() {
           </p>
         </section>
 
-        {/* Filters and Search */}
         <section className="mb-8">
           <div className="flex flex-col gap-4">
             <input
@@ -270,7 +260,7 @@ function AppliedJobs() {
                 className="p-2 rounded-lg bg-[#1A1528] text-white focus:outline-none"
               >
                 <option value="">All Statuses</option>
-                <option value="Interview">Interview</option>
+                <option value="Interview">Eligible</option> {/* Changed to "Eligible" */}
                 <option value="Rejected">Rejected</option>
                 <option value="Pending">Pending</option>
               </select>
@@ -297,7 +287,6 @@ function AppliedJobs() {
           </div>
         </section>
 
-        {/* Applied Jobs Section */}
         <section>
           <h2 className="text-2xl font-semibold text-white mb-4 flex items-center">
             <Briefcase className="mr-2" /> Applied Jobs
@@ -307,19 +296,10 @@ function AppliedJobs() {
               {[...Array(3)].map((_, index) => (
                 <motion.div
                   key={index}
-                  className="rounded-lg overflow-hidden bg-gradient-to-br from-[#F700FC] to-[#2941B9]"
+                  className="w-[350px] h-[400px] bg-[#1E1A2B] rounded-2xl animate-pulse"
                   variants={loadingCardVariants}
                   animate="animate"
-                >
-                  <div className="p-6 bg-[#16213e] bg-opacity-95">
-                    <div className="h-6 bg-gray-600 rounded w-3/4 mb-4"></div>
-                    <div className="space-y-2">
-                      <div className="h-4 bg-gray-600 rounded w-1/2"></div>
-                      <div className="h-4 bg-gray-600 rounded w-2/3"></div>
-                      <div className="h-4 bg-gray-600 rounded w-1/3"></div>
-                    </div>
-                  </div>
-                </motion.div>
+                />
               ))}
             </div>
           ) : error ? (
@@ -335,7 +315,7 @@ function AppliedJobs() {
                   statusText = "Rejected";
                   statusType = "rejected";
                 } else if (job.status === 10) {
-                  statusText = "Interview";
+                  statusText = "Eligible"; // Changed from "Interview" to "Eligible" to match CandidateHome
                   statusType = "success";
                 } else {
                   statusText = "Pending";
@@ -345,56 +325,81 @@ function AppliedJobs() {
                 return (
                   <motion.div
                     key={job.job_id || index}
-                    className="rounded-lg overflow-hidden shadow-lg bg-gradient-to-br from-[#F700FC] to-[#2941B9] hover:shadow-xl transition-shadow duration-300"
+                    className="w-[350px] h-[400px] bg-[#1E1A2B] rounded-2xl p-6 shadow-inner 
+                               hover:shadow-[0_0_15px_rgba(247,0,252,0.5)] transition-all duration-300 
+                               cursor-pointer relative overflow-hidden"
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                    whileHover={{ scale: 1.02, y: -5 }}
+                    transition={{ duration: 0.5, delay: index * 0.1, type: "spring" }}
                   >
-                    <div className="p-6 bg-[#16213e] bg-opacity-95">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="text-xl font-bold text-white truncate">{job.title || "Untitled Job"}</h3>
-                        <StatusBadge status={statusText} type={statusType} />
+                    <div className="h-2 w-full bg-gradient-to-r from-[#F700FC] to-[#2941B9] rounded-t-lg absolute top-0 left-0" />
+                    {/* Status Badge in Top-Right Corner */}
+                    <div className="absolute top-4 right-4">
+                      <StatusBadge status={statusText} type={statusType} />
+                    </div>
+                    <div className="mt-8">
+                      <motion.h3
+                        className="text-2xl font-bold text-white line-clamp-2"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                      >
+                        {job.title || "Untitled Job"}
+                      </motion.h3>
+                      <div className="inline-block bg-[#F700FC]/20 text-white text-sm font-medium px-3 py-1 rounded-full mt-2">
+                        {job.company_id || "Unknown Company"}
                       </div>
-                      <div className="space-y-2 mb-4 text-gray-300">
-                        <div className="flex items-center">
-                          <Building className="w-4 h-4 mr-2" />
-                          <span>{job.company_id || "Unknown Company"}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Calendar className="w-4 h-4 mr-2" />
-                          <span>{job.posted_on ? new Date(job.posted_on).toLocaleDateString() : "N/A"}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Clock className="w-4 h-4 mr-2" />
-                          <span className="line-clamp-2">{job.description || "No description available"}</span>
-                        </div>
+                      <p className="text-[14px] text-gray-400 mt-2">
+                        {job.posted_on ? new Date(job.posted_on).toDateString() : "N/A"}
+                      </p>
+                    </div>
+                    <div className="mt-4 flex flex-col gap-2 text-base text-[#B0B0B0]">
+                      <div className="flex items-center gap-2">
+                        <Building className="h-5 w-5 text-[#F700FC]" />
+                        <span className="line-clamp-1">{job.company_id || "N/A"}</span>
                       </div>
-                      <div className="flex flex-col gap-2 pt-4 border-t border-gray-700">
-                        {(job.status === null || job.status < 5) && (
-                          <button
-                            className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                            onClick={() => navigate('/upload-resume', { state: { job, email: JSON.parse(sessionStorage.getItem("user") || "{}").email } })}
-                          >
-                            Upload Resume
-                          </button>
-                        )}
-                        {job.status === 10 && (
-                          <button
-                            className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                            onClick={() => navigate('/interview', { state: { job } })}
-                          >
-                            Start Interview
-                          </button>
-                        )}
-                        {job.status === 5 && (
-                          <button
-                            className="w-full px-4 py-2 bg-gray-500 text-white rounded cursor-not-allowed"
-                            disabled
-                          >
-                            Rejected
-                          </button>
-                        )}
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-[#F700FC]" />
+                        <span className="line-clamp-1">
+                          {job.posted_on ? new Date(job.posted_on).toDateString() : "N/A"}
+                        </span>
                       </div>
+                      {/* Status Line in Details Section */}
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5 text-[#F700FC]" />
+                        <span className="line-clamp-1">{statusText}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-[#F700FC]" />
+                        <span className="text-[16px] line-clamp-2">{job.description || "N/A"}</span>
+                      </div>
+                    </div>
+                    <div className="absolute bottom-6 left-6 right-6">
+                      {(job.status === null || job.status < 5) && (
+                        <button
+                          className="w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                          onClick={() => navigate('/upload-resume', { state: { job, email: JSON.parse(sessionStorage.getItem("user") || "{}").email } })}
+                        >
+                          Upload Resume
+                        </button>
+                      )}
+                      {job.status === 10 && (
+                        <button
+                          className="w-full px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                          onClick={() => navigate('/interview', { state: { job } })}
+                        >
+                          Start Interview
+                        </button>
+                      )}
+                      {job.status === 5 && (
+                        <button
+                          className="w-full px-4 py-2 bg-gray-500 text-white rounded cursor-not-allowed text-sm"
+                          disabled
+                        >
+                          Rejected
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 );

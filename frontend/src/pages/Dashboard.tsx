@@ -388,6 +388,7 @@ function Dashboard() {
       return { plans, tokenPackages: [] };
     }
 
+    // If the API returns a single plan object
     if (typeof apiData === "object" && apiData.id && apiData.name) {
       const plan: SubscriptionPlan = {
         id: apiData.id,
@@ -682,7 +683,6 @@ function Dashboard() {
             <Package size={20} />
             <span>Packages</span>
           </a>
-
           <a
             href="#"
             className="flex items-center space-x-2 hover:text-purple-400"
@@ -715,7 +715,7 @@ function Dashboard() {
               <span className="font-bold">Z</span>
             </div>
             <button
-              className="text-gray-400 hover:text-red-500 cursor-pointer"
+              className="text-gray-400 hover:text-red-500 text-white px-4 py-2 rounded-md cursor-pointer"
               onClick={handleLogout}
               title="Logout"
             >
@@ -748,8 +748,8 @@ function Dashboard() {
                           {totalInterviews} Applications
                         </p>
                         <button
-                          className="text-white hover:underline"
-                          onClick={() => navigate("/total-interview")}
+                          className="bg-white text-purple-600 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium"
+                          onClick={() => navigateTo("interview-maker")}
                         >
                           View Details
                         </button>
@@ -767,7 +767,10 @@ function Dashboard() {
                         <p className="text-sm mb-4">
                           {totalParticipants} Applications
                         </p>
-                        <button className="text-white hover:underline">
+                        <button
+                          className="bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium"
+                          onClick={() => navigate("/total-interview")}
+                        >
                           View Details
                         </button>
                       </div>
@@ -784,7 +787,10 @@ function Dashboard() {
                         <p className="text-sm mb-4">
                           {totalQualified} Applications
                         </p>
-                        <button className="text-white hover:underline">
+                        <button
+                          className="bg-white text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium"
+                          onClick={() => navigate("/total-interview")}
+                        >
                           View Details
                         </button>
                       </div>
@@ -1067,7 +1073,9 @@ function Dashboard() {
                           <div className="flex justify-between items-center mb-4">
                             <div className="flex items-center">
                               <Briefcase className="mr-2" />
-                              <h2 className="text-xl font-bold">{job.title}</h2>
+                              <h2 className="text-xl font-bold">
+                                {job.title}
+                              </h2>
                             </div>
                             <div className="flex items-center gap-3">
                               {/* Toggle Button for Active/Inactive */}
@@ -1083,7 +1091,10 @@ function Dashboard() {
                               >
                                 {jobStatuses[job.job_id] === "active" ? (
                                   <>
-                                    <ToggleRight size={18} className="mr-1" />{" "}
+                                    <ToggleRight
+                                      size={18}
+                                      className="mr-1"
+                                    />{" "}
                                     Active
                                   </>
                                 ) : (
@@ -1108,20 +1119,21 @@ function Dashboard() {
                             {job.description || "No description available."}
                           </p>
 
-                          <div className="flex flex-wrap gap-2 mb-4">
+                          {/* Updated Attributes Section */}
+                          <div className="flex gap-4 mb-4">
                             {job.experience && (
-                              <span className="bg-gray-700 text-sm px-3 py-1 rounded-full">
+                              <span className="bg-gray-700 text-sm px-3 py-1 rounded-full w-32 flex items-center justify-center">
                                 {job.experience}
                               </span>
                             )}
                             {job.location && (
-                              <div className="flex items-center bg-gray-700 text-sm px-3 py-1 rounded-full">
+                              <div className="bg-gray-700 text-sm px-3 py-1 rounded-full w-32 flex items-center justify-center">
                                 <MapPin size={14} className="mr-1" />
                                 <span>{job.location}</span>
                               </div>
                             )}
                             {job.salary && (
-                              <div className="flex items-center bg-gray-700 text-sm px-3 py-1 rounded-full">
+                              <div className="bg-gray-700 text-sm px-3 py-1 rounded-full w-32 flex items-center justify-center">
                                 <DollarSign size={14} className="mr-1" />
                                 <span>{job.salary}</span>
                               </div>
@@ -1280,4 +1292,3 @@ function Dashboard() {
 }
 
 export default Dashboard;
-
