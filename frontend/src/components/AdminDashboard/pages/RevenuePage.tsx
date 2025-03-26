@@ -29,18 +29,21 @@ interface PricingPlan {
 
 const RevenuePage: React.FC = () => {
   const [pricingPlans, setPricingPlans] = useState<PricingPlan[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch pricing plans from the pricing API
   useEffect(() => {
     const fetchPricingPlans = async () => {
       try {
-        const response = await fetch('https://ngwu0au0uh.execute-api.us-east-1.amazonaws.com/default/get_pricing_list');
+        const response = await fetch(
+          'https://ngwu0au0uh.execute-api.us-east-1.amazonaws.com/default/get_pricing_list'
+        );
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-
         const formattedData = data.map((plan: any) => ({
           id: plan.id,
           name: plan.name,
@@ -51,17 +54,38 @@ const RevenuePage: React.FC = () => {
           subscribers: Number(plan.subscribers),
           revenue: Number(plan.revenue),
         }));
-
         setPricingPlans(formattedData);
-        setLoading(false);
       } catch (err) {
         console.error('Error fetching pricing plans:', err);
         setError('Failed to load pricing plans. Please try again later.');
+      } finally {
         setLoading(false);
       }
     };
 
     fetchPricingPlans();
+  }, []);
+
+  // Fetch transactions from the dash API
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const res = await fetch(
+          'https://upftf5d4qb.execute-api.us-east-1.amazonaws.com/default/dash'
+        );
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const data = await res.json();
+        // If the API returns a single transaction, wrap it in an array.
+        setTransactions(Array.isArray(data) ? data : [data]);
+      } catch (err) {
+        console.error('Error fetching transactions:', err);
+        // Optionally set an error state for transactions if needed
+      }
+    };
+
+    fetchTransactions();
   }, []);
 
   if (loading) {
@@ -80,13 +104,44 @@ const RevenuePage: React.FC = () => {
     );
   }
 
-  const totalRevenue = pricingPlans.reduce((sum, plan) => sum + plan.revenue, 0);
-  const totalSubscribers = pricingPlans.reduce((sum, plan) => sum + plan.subscribers, 0);
+  // Group transactions by subscription type and sum their revenue
+  const transactionRevenueByType = transactions.reduce((acc: Record<string, number>, tx: any) => {
+    if (tx.subscriptionType && tx.amount) {
+      const amount = Number(tx.amount);
+      acc[tx.subscriptionType] = (acc[tx.subscriptionType] || 0) + amount;
+    }
+    return acc;
+  }, {});
 
+  // Merge transaction revenue into pricing plans. If a subscription type from transactions
+  // does not exist in the pricing plans, add it as a new plan.
+  const plansMap: Record<string, PricingPlan> = {};
+  pricingPlans.forEach(plan => {
+    plansMap[plan.name] = { ...plan };
+  });
 
-  
+  Object.entries(transactionRevenueByType).forEach(([subscription, revenue]) => {
+    if (plansMap[subscription]) {
+      plansMap[subscription].revenue += revenue;
+      // Optionally update subscribers count if you want to count each new transaction as a subscriber
+      plansMap[subscription].subscribers += 1;
+    } else {
+      plansMap[subscription] = {
+        id: Date.now(), // Use a unique ID generator as needed
+        name: subscription,
+        duration: 0,
+        tokensPerMinute: 0,
+        tokens: 0,
+        price: 0,
+        subscribers: 1,
+        revenue: revenue,
+      };
+    }
+  });
 
-
+  const aggregatedPlans = Object.values(plansMap);
+  const totalRevenue = aggregatedPlans.reduce((sum, plan) => sum + plan.revenue, 0);
+  const totalSubscribers = aggregatedPlans.reduce((sum, plan) => sum + plan.subscribers, 0);
 
   return (
     <div>
@@ -101,28 +156,32 @@ const RevenuePage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <StatCard
           title="Monthly Revenue"
-          value={`$${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          change=" "
+          value={`$${totalRevenue.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`}
+          change="↑"
           icon={<DollarSign className="h-5 w-5 text-green-400" />}
         />
         <StatCard
           title="Annual Revenue"
-          value={`$${(totalRevenue * 12).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          change=" "
+          value={`$${(totalRevenue * 12).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`}
+          change="↑"
           icon={<Wallet className="h-5 w-5 text-green-400" />}
         />
         <StatCard
           title="Avg. Revenue Per User"
           value={`$${(totalSubscribers > 0 ? totalRevenue / totalSubscribers : 0).toFixed(2)}`}
-          change=" "
+          change="↑"
           icon={<Users className="h-5 w-5 text-blue-400" />}
         />
-
       </div>
 
-
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Revenue by Plan Table */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold">Revenue by Plan</h3>
@@ -139,9 +198,9 @@ const RevenuePage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {pricingPlans.map((plan) => {
+                {aggregatedPlans.map((plan) => {
                   const lastMonth = plan.revenue * (0.85 + Math.random() * 0.1);
-                  const growth = ((plan.revenue - lastMonth) / lastMonth) * 100;
+                  const growth = lastMonth ? ((plan.revenue - lastMonth) / lastMonth) * 100 : 0;
                   return (
                     <tr key={plan.id} className="border-b border-gray-700 hover:bg-gray-750">
                       <td className="py-3 font-medium">{plan.name}</td>
@@ -160,7 +219,7 @@ const RevenuePage: React.FC = () => {
           <div className="mt-6">
             <h4 className="text-sm font-medium text-gray-400 mb-3">Revenue Distribution</h4>
             <div className="flex h-10 rounded-md overflow-hidden shadow-lg">
-              {pricingPlans.map((plan, index) => {
+              {aggregatedPlans.map((plan, index) => {
                 const percentage = totalRevenue > 0 ? (plan.revenue / totalRevenue) * 100 : 0;
                 const colors = [
                   'bg-gradient-to-r from-purple-700 to-purple-500',
@@ -188,6 +247,7 @@ const RevenuePage: React.FC = () => {
           </div>
         </div>
 
+        {/* Forecasted Revenue Section */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold">Forecasted Revenue</h3>

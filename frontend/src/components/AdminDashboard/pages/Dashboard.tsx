@@ -1,89 +1,156 @@
 import React, { useEffect, useState } from 'react';
-import { DollarSign, Users, Zap, Download, ArrowRight, PlusCircle } from 'lucide-react';
+import { DollarSign, Users, Zap, Download, PlusCircle } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import CTABanner from '../components/CTABanner';
+import { Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 
-interface PricingPlan {
-  id: number;
-  name: string;
-  duration: number;
-  tokensPerMinute: number;
-  tokens: number;
-  price: number;
-  subscribers: number;
+// Register ChartJS components
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+interface Transaction {
+  transactionId: string;
+  amount: number;
+  currency: string;
+  date: string;
+  email: string;
+  paymentMethod: string;
+  subscriptionType: string;
+  timestamp: string;
+}
+
+interface AggregatedData {
+  subscriptionType: string;
   revenue: number;
+  subscribers: number;
 }
 
 interface DashboardProps {
-  pricingPlans: PricingPlan[];
   timeFilter: string;
   setTimeFilter: (filter: string) => void;
   navigateToPricing: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ 
-  pricingPlans, 
-  timeFilter, 
-  setTimeFilter,
-  navigateToPricing
-}) => {
-  const [pricingPlans1, setPricingPlans1] = useState<PricingPlan[]>([]);
+const Dashboard: React.FC<DashboardProps> = ({ timeFilter, setTimeFilter, navigateToPricing }) => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [aggregatedData, setAggregatedData] = useState<AggregatedData[]>([]);
   const [totalSubscribers, setTotalSubscribers] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
-  const [totalTokens, setTotalTokens] = useState(0);
-  
-
 
   useEffect(() => {
-    const fetchPlans = async () => {
+    const fetchTransactions = async () => {
       try {
-        const response = await fetch('https://ngwu0au0uh.execute-api.us-east-1.amazonaws.com/default/get_pricing_list');
+        // Fetch transactions from the API endpoint
+        const response = await fetch('https://upftf5d4qb.execute-api.us-east-1.amazonaws.com/default/dash');
         const data = await response.json();
 
-        const formattedData = data.map((plan: any) => ({
-          id: plan.id,
-          name: plan.name,
-          duration: Number(plan.duration),
-          tokensPerMinute: Number(plan.tokensPerMinute),
-          tokens: Number(plan.tokens),
-          price: Number(plan.price),
-          subscribers: Number(plan.subscribers),
-          revenue: Number(plan.revenue)
-        }));
+        // Filter out transactions with unknown or empty subscription type
+        const validTransactions = data.filter((txn: Transaction) => {
+          const st = txn.subscriptionType?.trim().toLowerCase();
+          return st && st !== 'unknown';
+        });
+        setTransactions(validTransactions);
 
-        setPricingPlans1(formattedData);
+        // Aggregate revenue and subscriber counts by subscription type
+        const aggregation: { [key: string]: { revenue: number; subscribers: number } } = {};
+        validTransactions.forEach((txn: Transaction) => {
+          const subType = txn.subscriptionType.trim();
+          if (!aggregation[subType]) {
+            aggregation[subType] = { revenue: 0, subscribers: 0 };
+          }
+          aggregation[subType].revenue += Number(txn.amount);
+          aggregation[subType].subscribers += 1;
+        });
 
-        // Calculate total subscribers, revenue, and tokens
-        const totalSubs = formattedData.reduce((acc: any, plan: { subscribers: any; }) => acc + plan.subscribers, 0);
-        const totalRev = formattedData.reduce((acc: any, plan: { revenue: any; }) => acc + plan.revenue, 0);
-        const totalToks = formattedData.reduce((acc: any, plan: { tokens: any; }) => acc + plan.tokens, 0);
+        const aggregatedArray: AggregatedData[] = Object.entries(aggregation).map(
+          ([subscriptionType, values]) => ({
+            subscriptionType,
+            revenue: values.revenue,
+            subscribers: values.subscribers
+          })
+        );
+        setAggregatedData(aggregatedArray);
 
-        setTotalSubscribers(totalSubs);
+        // Calculate totals using only valid transactions
+        const totalRev = validTransactions.reduce((acc: number, txn: Transaction) => acc + Number(txn.amount), 0);
+        const totalSubs = validTransactions.length;
         setTotalRevenue(totalRev);
-        setTotalTokens(totalToks);
-
+        setTotalSubscribers(totalSubs);
       } catch (error) {
-        console.error('Error fetching plans:', error);
+        console.error('Error fetching transactions:', error);
       }
     };
 
-    fetchPlans();
+    fetchTransactions();
   }, []);
 
-  const premiumPlans = pricingPlans1.filter(plan => plan.name.toLowerCase().includes('premium'));
-  const standardPlans = pricingPlans1.filter(plan => plan.name.toLowerCase().includes('standard'));
-  const basicPlans = pricingPlans1.filter(plan => plan.name.toLowerCase().includes('basic'));
+  // Prepare Chart.js data using the aggregatedData
+  const chartData = {
+    labels: aggregatedData.map(item => item.subscriptionType),
+    datasets: [
+      {
+        label: 'Revenue',
+        data: aggregatedData.map(item => item.revenue),
+        backgroundColor: aggregatedData.map((_, idx) => {
+          const colors = [
+            'rgba(59, 130, 246, 0.6)',
+            'rgba(99, 102, 241, 0.6)',
+            'rgba(168, 85, 247, 0.6)',
+            'rgba(16, 185, 129, 0.6)',
+            'rgba(245, 158, 11, 0.6)'
+          ];
+          return colors[idx % colors.length];
+        }),
+        borderColor: aggregatedData.map((_, idx) => {
+          const colors = [
+            'rgba(59, 130, 246, 1)',
+            'rgba(99, 102, 241, 1)',
+            'rgba(168, 85, 247, 1)',
+            'rgba(16, 185, 129, 1)',
+            'rgba(245, 158, 11, 1)'
+          ];
+          return colors[idx % colors.length];
+        }),
+        borderWidth: 1,
+      }
+    ]
+  };
 
-  const totalPremiumSubscribers = premiumPlans.reduce((acc, plan) => acc + plan.subscribers, 0);
-  const totalStandardSubscribers = standardPlans.reduce((acc, plan) => acc + plan.subscribers, 0);
-  const totalBasicSubscribers = basicPlans.reduce((acc, plan) => acc + plan.subscribers, 0);
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: true,
+        text: 'Revenue by Subscription Type',
+      },
+    },
+  };
 
-  const premiumPercentage = ((totalPremiumSubscribers / totalSubscribers) * 100).toFixed(1);
-  const standardPercentage = ((totalStandardSubscribers / totalSubscribers) * 100).toFixed(1);
-  const basicPercentage = ((totalBasicSubscribers / totalSubscribers) * 100).toFixed(1);
-
-  
-
+  // For conic-gradient pie chart (Subscribers by Subscription Type)
+  const totalSubsForPie = aggregatedData.reduce(
+    (sum, item) => sum + item.subscribers,
+    0
+  );
+  let cumulativePercent = 0;
+  const pieSlices = aggregatedData.map((item, index) => {
+    const colors = ['#3b82f6', '#6366f1', '#a855f7', '#10B981', '#F59E0B'];
+    const color = colors[index % colors.length];
+    const slicePercent = totalSubsForPie ? (item.subscribers / totalSubsForPie) * 100 : 0;
+    const startPercent = cumulativePercent;
+    cumulativePercent += slicePercent;
+    return `${color} ${startPercent}% ${cumulativePercent}%`;
+  }).join(', ');
 
   return (
     <div>
@@ -103,7 +170,10 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatCard 
           title="Total Revenue" 
-          value={`$${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} 
+          value={`$${totalRevenue.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}`} 
           change="15%" 
           icon={<DollarSign className="h-5 w-5 text-green-400" />}
           period={timeFilter}
@@ -118,8 +188,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         />
         
         <StatCard 
-          title="Tokens Allocated" 
-          value={totalTokens.toLocaleString()} 
+          title="Total Transactions" 
+          value={transactions.length} 
           change="12%" 
           icon={<Zap className="h-5 w-5 text-yellow-400" />}
           period={timeFilter}
@@ -127,121 +197,36 @@ const Dashboard: React.FC<DashboardProps> = ({
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Revenue by Subscription Type Bar Chart using Chart.js */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold">Revenue by Plan</h3>
+            <h3 className="text-xl font-bold">Revenue by Subscription Type</h3>
             <button className="text-purple-400 hover:text-purple-300 text-sm font-medium flex items-center">
               <Download className="h-4 w-4 mr-1" />
               Export
             </button>
           </div>
-          <div className="h-64 flex items-center justify-center relative">
-  <div className="absolute inset-0 flex items-end justify-around px-4">
-    {pricingPlans.map((plan) => {
-     
-      const maxRevenue = Math.max(...pricingPlans1.map(p => p.revenue));
-      const height = maxRevenue ? (plan.revenue / maxRevenue) * 100 : 0;
-
-      // Set colors based on plan type
-      const color = plan.name.toLowerCase().includes('premium')
-        ? 'from-blue-500 to-blue-400'
-        : plan.name.toLowerCase().includes('standard')
-        ? 'from-indigo-600 to-indigo-400'
-        : 'from-purple-600 to-purple-400';
-
-      return (
-        <div key={plan.id} className="flex flex-col items-center">
-          <div
-            className={`w-16 bg-gradient-to-t ${color} rounded-t relative group shadow-lg shadow-purple-900/20`}
-            style={{ height: `${height}%` }}
-          >
-            {/* Tooltip */}
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-              ${plan.revenue.toFixed(2)} ({plan.price.toFixed(2)} × {plan.subscribers})
-            </div>
-          </div>
-          <div className="mt-2 text-xs text-gray-400 text-center w-16 truncate">
-            {plan.name}
+          <div className="h-64">
+            {aggregatedData.length > 0 ? (
+              <Bar data={chartData} options={chartOptions} />
+            ) : (
+              <span className="text-gray-400">No subscription data available</span>
+            )}
           </div>
         </div>
-      );
-    })}
-  </div>
 
-  {/* Y-axis labels */}
-  <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between items-start text-xs text-gray-500 pointer-events-none">
-    <span>100%</span>
-    <span>75%</span>
-    <span>50%</span>
-    <span>25%</span>
-    <span>0%</span>
-  </div>
-</div>
-
-        </div>
-        
+        {/* Subscribers by Subscription Type Pie Chart */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold">Subscribers by Plan</h3>
+            <h3 className="text-xl font-bold">Subscribers by Subscription Type</h3>
           </div>
           <div className="h-64 flex items-center justify-center">
-            <div className="w-full h-full flex items-center justify-center">
             <div className="relative w-48 h-48">
-              {/* Interactive Pie Chart */}
+              {/* Pie Chart using conic-gradient with computed slices */}
               <div
                 className="absolute inset-0 rounded-full"
-                style={{
-                  background: `conic-gradient(
-                    #3b82f6 ${premiumPercentage}%,
-                    #6366f1 ${premiumPercentage}% ${parseFloat(premiumPercentage) + parseFloat(standardPercentage)}%,
-                    #a855f7 ${parseFloat(premiumPercentage) + parseFloat(standardPercentage)}% 100%
-                  )`
-                }}
+                style={{ background: `conic-gradient(${pieSlices})` }}
               />
-
-              {/* Hover labels */}
-              {/* Premium */}
-              {totalPremiumSubscribers > 0 && (
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div
-                    className="absolute w-20 h-20 -top-6 left-0 flex items-center justify-center"
-                    style={{ transform: 'translate(-50%, -50%)' }}
-                  >
-                    <div className="bg-gray-900 text-white text-xs py-1 px-2 rounded">
-                      Premium: {totalPremiumSubscribers} users ({premiumPercentage}%)
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Standard */}
-              {totalStandardSubscribers > 0 && (
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div
-                    className="absolute w-20 h-20 -top-6 right-0 flex items-center justify-center"
-                    style={{ transform: 'translate(50%, -50%)' }}
-                  >
-                    <div className="bg-gray-900 text-white text-xs py-1 px-2 rounded">
-                      Standard: {totalStandardSubscribers} users ({standardPercentage}%)
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Basic */}
-              {totalBasicSubscribers > 0 && (
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div
-                    className="absolute w-20 h-20 bottom-0 flex items-center justify-center"
-                    style={{ transform: 'translate(0%, 50%)' }}
-                  >
-                    <div className="bg-gray-900 text-white text-xs py-1 px-2 rounded">
-                      Basic: {totalBasicSubscribers} users ({basicPercentage}%)
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Center Text */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
@@ -250,81 +235,32 @@ const Dashboard: React.FC<DashboardProps> = ({
                 </div>
               </div>
             </div>
-
-            </div>
           </div>
-          
-          {/* Legend with percentages */}
+          {/* Legend */}
           <div className="mt-4 flex justify-center space-x-6">
-            {/* Premium */}
-            {totalPremiumSubscribers >= 0 && (
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                <span className="text-xs">
-                  Premium ({premiumPercentage}%)
-                </span>
-              </div>
-            )}
-            
-            {/* Standard */}
-            {totalStandardSubscribers >= 0 && (
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-indigo-600 rounded-full mr-2"></div>
-                <span className="text-xs">
-                  Standard ({standardPercentage}%)
-                </span>
-              </div>
-            )}
-
-            {/* Basic */}
-            {totalBasicSubscribers >= 0 && (
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-purple-600 rounded-full mr-2"></div>
-                <span className="text-xs">
-                  Basic ({basicPercentage}%)
-                </span>
-              </div>
-            )}
+            {aggregatedData.map((item, index) => {
+              const colors = ['#3b82f6', '#6366f1', '#a855f7', '#10B981', '#F59E0B'];
+              const color = colors[index % colors.length];
+              const percentage = totalSubsForPie
+                ? ((item.subscribers / totalSubsForPie) * 100).toFixed(1)
+                : '0';
+              return (
+                <div key={index} className="flex items-center">
+                  <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: color }}></div>
+                  <span className="text-xs">
+                    {item.subscriptionType} ({percentage}%)
+                  </span>
+                </div>
+              );
+            })}
           </div>
-
         </div>
       </div>
       
-      <div className="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700 mb-8">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700 mb-8">
-        <h3 className="text-xl font-bold mb-4">Plan Performance</h3>
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-gray-700 text-gray-400">
-              <th className="pb-3">Plan Name</th>
-              <th className="pb-3">Price</th>
-              <th className="pb-3">Subscribers</th>
-              <th className="pb-3">Revenue</th>
-              <th className="pb-3">Tokens/Min</th>
-              <th className="pb-3">Total Tokens</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pricingPlans1.map((plan) => (
-              <tr key={plan.id} className="border-b border-gray-700 hover:bg-gray-750">
-                <td className="py-3">{plan.name}</td>
-                <td className="py-3">${plan.price.toFixed(2)}</td>
-                <td className="py-3">{plan.subscribers}</td>
-                <td className="py-3">${plan.revenue.toFixed(2)}</td>
-                <td className="py-3">{plan.tokensPerMinute}</td>
-                <td className="py-3">{plan.tokens.toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    
-      </div>
-      
       <CTABanner 
-        title="Ready to create or update your pricing plans?"
+        title="Ready to manage your subscriptions?"
         description="Optimize your pricing strategy to maximize revenue and customer satisfaction."
-        buttonText="Manage Pricing Plans"
+        buttonText="Manage Subscriptions"
         onClick={navigateToPricing}
       />
     </div>
