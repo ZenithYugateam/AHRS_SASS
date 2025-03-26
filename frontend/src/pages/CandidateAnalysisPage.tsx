@@ -6,10 +6,6 @@ import {
   FileJson,
   FileSpreadsheet,
   Download,
-  Home,
-  Package,
-  Mic,
-  User,
   ChevronDown,
   FileText,
   CheckCircle,
@@ -91,41 +87,6 @@ const formatDuration = (seconds: number): string => {
     return `${remainingSeconds} second${remainingSeconds !== 1 ? 's' : ''}`;
   }
 };
-
-// --- Navbar Component ---
-function Navbar() {
-  return (
-    <nav className="bg-[#12121a] border-b border-gray-800 px-6 py-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-bold text-white">Dashboard</h1>
-          <div className="ml-8">
-            <span className="text-gray-400">Hi, zenithyugaa</span>
-            <span className="ml-2">👋</span>
-          </div>
-        </div>
-        <div className="flex items-center space-x-6">
-          <NavLink icon={<Home className="w-5 h-5" />} text="Home" />
-          <NavLink icon={<Package className="w-5 h-5" />} text="Packages" />
-          <NavLink icon={<Mic className="w-5 h-5" />} text="Interview Maker" />
-          <NavLink icon={<User className="w-5 h-5" />} text="Profile" />
-          <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-            Manage Subscription
-          </button>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-function NavLink({ icon, text }: { icon: React.ReactNode; text: string }) {
-  return (
-    <a href="#" className="flex items-center space-x-2 text-gray-400 hover:text-purple-400 transition-colors">
-      {icon}
-      <span>{text}</span>
-    </a>
-  );
-}
 
 // --- PerformanceSummary Component ---
 interface PerformanceSummaryProps {
@@ -436,14 +397,12 @@ const CandidateAnalysisPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <Navbar />
       <div className="p-6">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center text-purple-400 hover:text-purple-300 mb-6"
+          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors mb-4"
         >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Dashboard
+          Back
         </button>
 
         <div className="bg-[#12121a] rounded-lg p-6 shadow-xl mb-8">

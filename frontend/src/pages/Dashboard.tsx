@@ -739,7 +739,7 @@ function Dashboard() {
                   <div className="bg-purple-600 rounded-lg p-6">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-lg mb-2">Total Interviews</p>
+                        <p className="text-lg mb-2">Total Interviews Posted</p>
                         <h3 className="text-5xl font-bold mb-2">
                           {totalInterviews}
                         </h3>

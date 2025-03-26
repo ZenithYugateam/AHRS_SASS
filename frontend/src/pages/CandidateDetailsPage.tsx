@@ -1,53 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Home, Mic, Package, Search, User } from 'lucide-react';
+import { Search } from 'lucide-react';
 import axios from 'axios';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-
-// --- NavLink Component ---
-function NavLink({ icon, text, to }: { icon: React.ReactNode; text: string; to: string }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isActive = location.pathname === to;
-  return (
-    <button
-      onClick={() => navigate(to)}
-      className={`flex items-center space-x-2 transition-colors ${
-        isActive ? 'text-purple-400' : 'text-gray-400 hover:text-purple-400'
-      }`}
-    >
-      {icon}
-      <span>{text}</span>
-    </button>
-  );
-}
-
-// --- Navbar Component ---
-function Navbar() {
-  return (
-    <nav className="bg-[#12121a] border-b border-gray-800 px-6 py-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-bold text-white">247 Interview.com</h1>
-          <div className="ml-8">
-            <span className="text-gray-400">Hi, zenithyugaa</span>
-            <span className="ml-2">👋</span>
-          </div>
-        </div>
-        <div className="flex items-center space-x-6">
-          <NavLink icon={<Home className="w-5 h-5" />} text="Home" to="/Company-dashboard" />
-          <NavLink icon={<Package className="w-5 h-5" />} text="Packages" to="/packages" />
-          <NavLink icon={<Mic className="w-5 h-5" />} text="Interview Maker" to="/interview-maker" />
-          <NavLink icon={<User className="w-5 h-5" />} text="Profile" to="/profile" />
-          <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors">
-            Manage Subscription
-          </button>
-        </div>
-      </div>
-    </nav>
-  );
-}
 
 // --- CandidateRow Interface ---
 interface CandidateRow {
@@ -69,17 +25,15 @@ const CandidateDetailsPage: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // filter for status
-  const [userName, setUserName] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Retrieve company id and user info from session storage
+  // Retrieve company id from session storage
   useEffect(() => {
     const userData = sessionStorage.getItem('user');
     if (userData) {
       try {
         const parsedUser = JSON.parse(userData);
         setCompanyId(parsedUser.email);
-        setUserName(parsedUser.name || parsedUser.email);
       } catch (error) {
         console.error('Error parsing user data from session storage:', error);
       }
@@ -92,7 +46,6 @@ const CandidateDetailsPage: React.FC = () => {
     axios
       .get(`https://ho5dvgc5u2.execute-api.us-east-1.amazonaws.com/default/getnightstatus?company_id=${companyId}`)
       .then((response) => {
-        // Assuming the endpoint returns an array under response.data.updatedCandidates
         setUpdatedCandidates(response.data.updatedCandidates || []);
       })
       .catch((error) => {
@@ -121,7 +74,6 @@ const CandidateDetailsPage: React.FC = () => {
             });
           }
         });
-        // Filter out candidates that have been updated in the backend
         const filteredCandidates = candidateRows.filter(
           (c) =>
             !updatedCandidates.some(
@@ -157,7 +109,7 @@ const CandidateDetailsPage: React.FC = () => {
     return 0;
   });
 
-  // Handle candidate action via POST API.
+  // Handle candidate action via POST API
   const handleCandidateAction = (candidate: CandidateRow, action: 'approve' | 'reject') => {
     const endpoint = 'https://v92aqono0a.execute-api.us-east-1.amazonaws.com/default/nightstatus';
     axios
@@ -167,7 +119,6 @@ const CandidateDetailsPage: React.FC = () => {
         action: action,
       })
       .then(() => {
-        // Optionally remove the candidate from the pending list immediately
         setCandidates((prev) =>
           prev.filter(
             (c) =>
@@ -175,7 +126,6 @@ const CandidateDetailsPage: React.FC = () => {
           )
         );
         toast.success(`Candidate ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
-        // Refresh updatedCandidates by calling the getnightstatus API again
         if (companyId) {
           axios
             .get(`https://ho5dvgc5u2.execute-api.us-east-1.amazonaws.com/default/getnightstatus?company_id=${companyId}`)
@@ -210,8 +160,15 @@ const CandidateDetailsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <Navbar />
+      {/* Add Back to Dashboard button at the top left */}
       <div className="p-6">
+        <button
+          onClick={() => navigate('/Company-dashboard')}
+          className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors mb-4"
+        >
+          Back to Dashboard
+        </button>
+
         <h1 className="text-3xl font-bold text-purple-400 mb-6">Candidate Details</h1>
         {/* Search and Filter Options */}
         <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mb-6">
