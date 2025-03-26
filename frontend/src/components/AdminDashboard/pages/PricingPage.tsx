@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { PlusCircle, Zap, PieChart, TrendingUp } from 'lucide-react';
 import PricingTable from '../components/PricingTable';
 import EmptyPricingState from '../components/EmptyPricingState';
@@ -30,6 +30,53 @@ const PricingPage: React.FC<PricingPageProps> = ({
   handleAddPlan,
   handleDeletePlan
 }) => {
+  // Local state to store pricing plans updated with subscribers count from the transactions API
+  const [updatedPlans, setUpdatedPlans] = useState<PricingPlan[]>(pricingPlans);
+
+  // Whenever pricingPlans prop changes, reset the updated plans state.
+  useEffect(() => {
+    setUpdatedPlans(pricingPlans);
+  }, [pricingPlans]);
+
+  // Fetch transactions from the GET API and update the subscribers field.
+  useEffect(() => {
+    const fetchTransactionsAndUpdateSubscribers = async () => {
+      try {
+        const response = await fetch('https://upftf5d4qb.execute-api.us-east-1.amazonaws.com/default/dash');
+        const transactions = await response.json();
+
+        // Filter transactions with a valid subscription type (ignoring unknown or empty)
+        const validTransactions = transactions.filter((txn: any) => {
+          const subType = txn.subscriptionType?.trim();
+          return subType && subType.toLowerCase() !== 'unknown';
+        });
+
+        // Group transactions by subscription type using transactionId as unique subscriber
+        const subscribersByType: { [key: string]: Set<string> } = {};
+        validTransactions.forEach((txn: any) => {
+          const subType = txn.subscriptionType.trim();
+          if (!subscribersByType[subType]) {
+            subscribersByType[subType] = new Set();
+          }
+          // Each unique transactionId counts as one subscriber
+          subscribersByType[subType].add(txn.transactionId);
+        });
+
+        // Update pricing plans with the new subscribers count
+        const newPlans = updatedPlans.map(plan => {
+          const subsCount = subscribersByType[plan.name] ? subscribersByType[plan.name].size : 0;
+          return { ...plan, subscribers: subsCount };
+        });
+
+        setUpdatedPlans(newPlans);
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+      }
+    };
+
+    fetchTransactionsAndUpdateSubscribers();
+  }, [pricingPlans]); // Re-run when pricingPlans prop changes
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -50,9 +97,9 @@ const PricingPage: React.FC<PricingPageProps> = ({
         />
       )}
       
-      {pricingPlans.length > 0 ? (
+      {updatedPlans.length > 0 ? (
         <PricingTable 
-          plans={pricingPlans}
+          plans={updatedPlans}
           onDeletePlan={handleDeletePlan}
         />
       ) : (
