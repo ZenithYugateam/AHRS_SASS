@@ -40,19 +40,6 @@ const CandidateDetailsPage: React.FC = () => {
     }
   }, []);
 
-  // Fetch updated candidates from backend using getnightstatus API
-  useEffect(() => {
-    if (!companyId) return;
-    axios
-      .get(`https://ho5dvgc5u2.execute-api.us-east-1.amazonaws.com/default/getnightstatus?company_id=${companyId}`)
-      .then((response) => {
-        setUpdatedCandidates(response.data.updatedCandidates || []);
-      })
-      .catch((error) => {
-        console.error('Error fetching updated candidate data:', error);
-      });
-  }, [companyId]);
-
   // Fetch candidate data from get_total_interview and filter out updated ones
   useEffect(() => {
     if (!companyId) return;
@@ -74,13 +61,9 @@ const CandidateDetailsPage: React.FC = () => {
             });
           }
         });
-        const filteredCandidates = candidateRows.filter(
-          (c) =>
-            !updatedCandidates.some(
-              (u) => u.candidateId === c.candidateId && u.jobId === c.jobId
-            )
-        );
-        setCandidates(filteredCandidates);
+        setCandidates(candidateRows);
+        // Fetch updated status for each candidate dynamically
+        fetchUpdatedCandidates(candidateRows);
       })
       .catch((error) => {
         console.error('Error fetching candidate data:', error);
@@ -88,7 +71,45 @@ const CandidateDetailsPage: React.FC = () => {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [companyId, updatedCandidates]);
+  }, [companyId]);
+
+  // Function to fetch updated candidates dynamically using candidateId and jobId
+  const fetchUpdatedCandidates = async (candidateRows: CandidateRow[]) => {
+    const updatedCandidatesPromises = candidateRows.map((candidate) =>
+      axios
+        .get(
+          `https://ho5dvgc5u2.execute-api.us-east-1.amazonaws.com/default/getnightstatus?candidateId=${candidate.candidateId}&jobId=${candidate.jobId}`
+        )
+        .then((response) => {
+          // Assuming the API returns an array of items in response.data.data
+          const updatedData = response.data.data || [];
+          return updatedData.map((item: any) => ({
+            ...candidate,
+            status: item.status,
+            managerMessage: item.managerMessage,
+            updated: true,
+            timestamp: item.timestamp,
+          }));
+        })
+        .catch((error) => {
+          console.error(`Error fetching status for ${candidate.candidateId}-${candidate.jobId}:`, error);
+          return [{ ...candidate, updated: false }]; // Return original candidate if fetch fails
+        })
+    );
+
+    try {
+      const results = await Promise.all(updatedCandidatesPromises);
+      const flattenedResults = results.flat();
+      setUpdatedCandidates(flattenedResults.filter((c) => c.updated));
+      setCandidates((prev) =>
+        prev.filter(
+          (c) => !flattenedResults.some((u) => u.candidateId === c.candidateId && u.jobId === c.jobId && u.updated)
+        )
+      );
+    } catch (error) {
+      console.error('Error processing updated candidates:', error);
+    }
+  };
 
   // Combine updated candidates and those pending update
   const finalCandidates = [...updatedCandidates, ...candidates];
@@ -126,16 +147,7 @@ const CandidateDetailsPage: React.FC = () => {
           )
         );
         toast.success(`Candidate ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
-        if (companyId) {
-          axios
-            .get(`https://ho5dvgc5u2.execute-api.us-east-1.amazonaws.com/default/getnightstatus?company_id=${companyId}`)
-            .then((response) => {
-              setUpdatedCandidates(response.data.updatedCandidates || []);
-            })
-            .catch((error) => {
-              console.error('Error refreshing updated candidate data:', error);
-            });
-        }
+        fetchUpdatedCandidates(candidates); // Refresh updated candidates
       })
       .catch((error) => {
         console.error('Error updating candidate status:', error);
@@ -160,7 +172,6 @@ const CandidateDetailsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
-      {/* Add Back to Dashboard button at the top left */}
       <div className="p-6">
         <button
           onClick={() => navigate('/Company-dashboard')}
@@ -223,7 +234,7 @@ const CandidateDetailsPage: React.FC = () => {
                   </div>
                   <div>
                     {candidate.status === 10 ? (
-                      <span className="inline-block px-3 py-1 rounded-full text-sm bg-green-500/20 text-green-400">
+                      <span className="inline-block px-3bund py-1 rounded-full text-sm bg-green-500/20 text-green-400">
                         Selected
                       </span>
                     ) : (
