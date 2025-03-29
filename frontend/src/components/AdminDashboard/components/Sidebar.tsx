@@ -1,5 +1,15 @@
-import React from 'react';
-import { LayoutDashboard, DollarSign, Users, BarChart2, Settings } from 'lucide-react';
+import React from "react";
+import {
+  LayoutDashboard,
+  Users,
+  Settings,
+  CreditCard,
+  BarChart3,
+  LogOut,
+  TrendingUp,
+} from "lucide-react";
+
+import { useNavigate } from "react-router-dom";
 
 interface SidebarProps {
   activeTab: string;
@@ -7,69 +17,116 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    sessionStorage.clear();
+    navigate("/");
+  };
   return (
-    <div className="w-64 bg-gray-800 p-4 flex flex-col h-full">
-      <div>
-        <div className="flex items-center mb-6">
-          <h1 className="text-2xl font-bold">AHRS Admin</h1>
-        </div>
-        <nav className="space-y-2">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center p-2 rounded-md ${
-              activeTab === 'dashboard' ? 'bg-purple-600' : 'hover:bg-gray-700'
-            }`}
-          >
-            <LayoutDashboard className="h-5 w-5 mr-2" />
-            Dashboard
-          </button>
-          <button
-            onClick={() => setActiveTab('pricing')}
-            className={`w-full flex items-center p-2 rounded-md ${
-              activeTab === 'pricing' ? 'bg-purple-600' : 'hover:bg-gray-700'
-            }`}
-          >
-            <DollarSign className="h-5 w-5 mr-2" />
-            Pricing Plans
-          </button>
-          <button
-            onClick={() => setActiveTab('revenue')}
-            className={`w-full flex items-center p-2 rounded-md ${
-              activeTab === 'revenue' ? 'bg-purple-600' : 'hover:bg-gray-700'
-            }`}
-          >
-            <DollarSign className="h-5 w-5 mr-2" />
-            Revenue
-          </button>
-          <button
-            onClick={() => setActiveTab('customers')}
-            className={`w-full flex items-center p-2 rounded-md ${
-              activeTab === 'customers' ? 'bg-purple-600' : 'hover:bg-gray-700'
-            }`}
-          >
-            <Users className="h-5 w-5 mr-2" />
-            Customers
-          </button>
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`w-full flex items-center p-2 rounded-md ${
-              activeTab === 'analytics' ? 'bg-purple-600' : 'hover:bg-gray-700'
-            }`}
-          >
-            <BarChart2 className="h-5 w-5 mr-2" />
-            Analytics
-          </button>
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`w-full flex items-center p-2 rounded-md ${
-              activeTab === 'settings' ? 'bg-purple-600' : 'hover:bg-gray-700'
-            }`}
-          >
-            <Settings className="h-5 w-5 mr-2" />
-            Settings
-          </button>
-        </nav>
+    <div className="w-64 bg-gray-800 p-4">
+      <div className="flex items-center mb-8">
+        <LayoutDashboard className="h-8 w-8 mr-2 text-purple-500" />
+        <h1 className="text-xl font-bold">AHRS Admin</h1>
       </div>
+
+      <nav>
+        <ul>
+          <li
+            className={`mb-2 p-2 rounded ${
+              activeTab === "dashboard" ? "bg-purple-900" : "hover:bg-gray-700"
+            }`}
+          >
+            <button
+              className="flex items-center w-full text-left"
+              onClick={() => setActiveTab("dashboard")}
+            >
+              <LayoutDashboard className="h-5 w-5 mr-3" />
+              Dashboard
+            </button>
+          </li>
+          <li
+            className={`mb-2 p-2 rounded ${
+              activeTab === "pricing" ? "bg-purple-900" : "hover:bg-gray-700"
+            }`}
+          >
+            <button
+              className="flex items-center w-full text-left"
+              onClick={() => setActiveTab("pricing")}
+            >
+              <CreditCard className="h-5 w-5 mr-3" />
+              Pricing Plans
+            </button>
+          </li>
+          <li
+            className={`mb-2 p-2 rounded ${
+              activeTab === "revenue" ? "bg-purple-900" : "hover:bg-gray-700"
+            }`}
+          >
+            <button
+              className="flex items-center w-full text-left"
+              onClick={() => setActiveTab("revenue")}
+            >
+              <TrendingUp className="h-5 w-5 mr-3" />
+              Revenue
+            </button>
+          </li>
+          <li
+            className={`mb-2 p-2 rounded ${
+              activeTab === "customers" ? "bg-purple-900" : "hover:bg-gray-700"
+            }`}
+          >
+            <button
+              className="flex items-center w-full text-left"
+              onClick={() => setActiveTab("customers")}
+            >
+              <Users className="h-5 w-5 mr-3" />
+              Customers
+            </button>
+          </li>
+          <li
+            className={`mb-2 p-2 rounded ${
+              activeTab === "analytics" ? "bg-purple-900" : "hover:bg-gray-700"
+            }`}
+          >
+            <button
+              className="flex items-center w-full text-left"
+              onClick={() => setActiveTab("analytics")}
+            >
+              <BarChart3 className="h-5 w-5 mr-3" />
+              Analytics
+            </button>
+          </li>
+          <li
+            className={`mb-2 p-2 rounded ${
+              activeTab === "settings" ? "bg-purple-900" : "hover:bg-gray-700"
+            }`}
+          >
+            <button
+              className="flex items-center w-full text-left"
+              onClick={() => setActiveTab("settings")}
+            >
+              <Settings className="h-5 w-5 mr-3" />
+              Settings
+            </button>
+          </li>
+          <li
+            className={`mb-2 p-2 rounded ${
+              activeTab === "logout" ? "bg-purple-900" : "hover:bg-gray-500/30"
+            }`}
+          >
+            <button
+              className="flex items-center w-full text-left text-red-500 hover:text-red-500 transition-colors"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-5 w-5 mr-3 text-red-500 hover:text-red-500  " />
+              Logout
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <div className="absolute bottom-4 left-4 right-4"></div>
     </div>
   );
 };

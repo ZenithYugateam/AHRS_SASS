@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { HelpCircle } from 'lucide-react';
 import Sidebar from './components/Sidebar';
-import Header from './components/Header';
+// import Header from './components/Header';
 import Footer from './components/Footer';
 import HelpButton from './components/HelpButton';
 import Dashboard from './pages/Dashboard';
@@ -55,16 +55,8 @@ function Admindashboard() {
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header with Logout Button */}
-        <div className="bg-gray-800 p-4 flex justify-between items-center">
-          <Header />
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
-          >
-            Logout
-          </button>
-        </div>
+        {/* Header */}
+        {/* <Header /> */}
         
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto bg-gray-900 p-6">
@@ -100,6 +92,10 @@ function Admindashboard() {
           )}
           
           {activeTab === 'settings' && (
+            <SettingsPage />
+          )}
+
+          {activeTab === 'logout' && (
             <SettingsPage />
           )}
         </main>
