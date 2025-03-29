@@ -14,9 +14,11 @@ import SettingsPage from './pages/SettingsPage';
 function Admindashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [pricingPlans, setPricingPlans] = useState([
-    { id: 1, name: 'Basic Plan', duration: 10, tokensPerMinute: 100, tokens: 1000, price: 29.99, subscribers: 42, revenue: 1259.58 },
-    { id: 2, name: 'Standard Plan', duration: 30, tokensPerMinute: 120, tokens: 3000, price: 79.99, subscribers: 28, revenue: 2239.72 },
-    { id: 3, name: 'Premium Plan', duration: 60, tokensPerMinute: 150, tokens: 9000, price: 149.99, subscribers: 16, revenue: 2399.84 },
+    { id: 1, name: 'GENBASIC', duration: 900, tokensPerMinute: 100, tokens: 1000, price: 30.00, subscribers: 0, revenue: 0 },
+    { id: 2, name: 'new', duration: 30, tokensPerMinute: 100, tokens: 1000, price: 39.00, subscribers: 0, revenue: 0 },
+    { id: 3, name: 'Elite', duration: 30, tokensPerMinute: 100, tokens: 3000, price: 899.00, subscribers: 0, revenue: 0 },
+    { id: 4, name: 'premium', duration: 30, tokensPerMinute: 30, tokens: 30, price: 30.00, subscribers: 0, revenue: 0 },
+    { id: 5, name: 'basic plans', duration: 434, tokensPerMinute: 3434, tokens: 3434, price: 39.96, subscribers: 3, revenue: 0 },
   ]);
   const [showAddPricingForm, setShowAddPricingForm] = useState(false);
   const [timeFilter, setTimeFilter] = useState('month');
@@ -41,6 +43,11 @@ function Admindashboard() {
     setActiveTab('pricing');
   };
 
+  const handleLogout = () => {
+    // Add logout logic here (e.g., clear auth token, redirect to login page)
+    console.log('Logging out...');
+  };
+
   return (
     <div className="flex h-screen bg-gray-900 text-white">
       {/* Sidebar */}
@@ -48,8 +55,16 @@ function Admindashboard() {
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <Header />
+        {/* Header with Logout Button */}
+        <div className="bg-gray-800 p-4 flex justify-between items-center">
+          <Header />
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
+          >
+            Logout
+          </button>
+        </div>
         
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto bg-gray-900 p-6">
