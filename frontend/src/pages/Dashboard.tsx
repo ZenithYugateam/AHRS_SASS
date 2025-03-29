@@ -1051,8 +1051,8 @@ function Dashboard() {
             {currentPage === "interview-maker" && (
               <div className="min-h-screen bg-gray-900 text-white p-6 md:p-8">
                 {/* Header Section */}
-                <div className="bg-gray-800 shadow-lg rounded-lg p-6 mb-8 flex flex-col md:flex-row justify-between items-center">
-                  <h1 className="text-3xl md:text-4xl font-bold text-purple-300 mb-4 md:mb-0">
+                <div className="rounded-lg p-6 mb-8 flex flex-col md:flex-row justify-between items-center">
+                  <h1 className="text-2xl md:text-3xl font-bold text-purple-300 mb-4 md:mb-0">
                     Company Posted Jobs
                   </h1>
                   <button
@@ -1070,14 +1070,14 @@ function Dashboard() {
                       jobs.map((job) => (
                         <div
                           key={job.job_id}
-                          className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-all duration-300 shadow-md"
+                          className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-all duration-300 shadow-md flex flex-col h-[350px]" // Fixed height for the card
                         >
                           {/* Job Title and Actions */}
                           <div className="flex justify-between items-center mb-4">
                             <div className="flex items-center">
                               <Briefcase className="mr-2 text-purple-400" size={20} />
                               <h2 className="text-xl font-semibold text-white">
-                                {job.title}
+                                {job.title || "Untitled Job"}
                               </h2>
                             </div>
                             <div className="flex items-center gap-3">
@@ -1111,32 +1111,50 @@ function Dashboard() {
                             </div>
                           </div>
 
-                          {/* Job Description */}
-                          <p className="text-gray-300 text-sm mb-4 line-clamp-3">
+                          {/* Job Description with Fixed Height */}
+                          <p className="text-gray-300 text-sm mb-4 line-clamp-3 min-h-[60px] max-h-[60px] overflow-hidden">
                             {job.description || "No description available."}
                           </p>
 
-                          {/* Attributes Section - Aligned in a Single Row */}
-                          <div className="flex flex-wrap gap-3 mb-4">
-                            {job.experience && (
+                          {/* Attributes Section - Aligned in a Single Row with Fixed Spacing */}
+                          <div className="flex gap-3 mb-4">
+                            {job.experience ? (
                               <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
                                 <Briefcase size={12} className="mr-1 text-purple-400" />
                                 <span>{job.experience}</span>
                               </div>
+                            ) : (
+                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
+                                <Briefcase size={12} className="mr-1 text-purple-400" />
+                                <span>Placeholder</span>
+                              </div>
                             )}
-                            {job.location && (
+                            {job.location ? (
                               <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
                                 <MapPin size={12} className="mr-1 text-purple-400" />
                                 <span>{job.location}</span>
                               </div>
+                            ) : (
+                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
+                                <MapPin size={12} className="mr-1 text-purple-400" />
+                                <span>Placeholder</span>
+                              </div>
                             )}
-                            {job.salary && (
+                            {job.salary ? (
                               <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
                                 <DollarSign size={12} className="mr-1 text-purple-400" />
                                 <span>{job.salary}</span>
                               </div>
+                            ) : (
+                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
+                                <DollarSign size={12} className="mr-1 text-purple-400" />
+                                <span>Placeholder</span>
+                              </div>
                             )}
                           </div>
+
+                          {/* Spacer to Push Button to Bottom */}
+                          <div className="flex-grow"></div>
 
                           {/* Set Interview Button */}
                           <button
