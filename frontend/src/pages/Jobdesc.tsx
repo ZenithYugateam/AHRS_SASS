@@ -6,6 +6,7 @@ interface Job {
   job_id: string;
   title: string;
   description?: string;
+  display_name: string;
   experience?: string;
   location?: string;
   salary?: string;
@@ -17,6 +18,7 @@ interface Job {
   views?: number;
   daysLeft?: number;
   responsibilities?: string[];
+  keyResponsibilities?: string;
   requirements?: string[];
   deadline?: string;
   benefits?: string[];
@@ -31,33 +33,41 @@ function Jobdesc() {
   useEffect(() => {
     const jobData = location.state?.job || JSON.parse(localStorage.getItem("selectedJob") || "{}");
     const email = location.state?.email;
-
+  
+    // Log jobData to see what's being retrieved
+    console.log("jobData from session:", jobData);
+  
     if (jobData) {
       const formattedJob: Job = {
         ...jobData,
-        company_id: jobData.company_id,
-        posted_on: jobData.posted_on || jobData.job_posted 
+        display_name: jobData.display_name,
+        posted_on: jobData.posted_on || jobData.job_posted
           ? new Date(jobData.posted_on || jobData.job_posted).toLocaleDateString()
           : "N/A",
-        applicants: jobData.applicants || 287,
-        views: jobData.views || 13040,
-        daysLeft: jobData.daysLeft || 9,
+        applicants: jobData.applicants || " ",
+        views: jobData.views || " ",
+        daysLeft: jobData.daysLeft || " ",
         description: jobData.description || "No description available",
-        responsibilities: jobData.responsibilities || [
-          "Design and implement scalable software solutions",
-          "Lead technical design discussions",
-        ],
+        keyResponsibilities: jobData.key_responsibilities
+          ? jobData.key_responsibilities.split("\n") // Split the key_responsibilities string into an array
+          : ["Design and implement scalable software solutions", "Lead technical design discussions"],
         requirements: jobData.requirements || [
           jobData.experience ? `${jobData.experience} of experience` : "Experience required",
         ],
         deadline: jobData.deadline || "N/A",
-        benefits: jobData.benefits || ["Competitive salary package"],
+        benefits: jobData.benefits
+          ? jobData.benefits.split("\n") // Split the benefits string into an array
+          : ["Competitive salary package"],
         email: email,
       };
+  
+      // Log the formattedJob to check if it's correctly set
+      console.log("Formatted job:", formattedJob);
+  
       setJob(formattedJob);
     }
   }, [location.state]);
-
+  
   const handleApplyClick = () => {
     if (job) {
       navigate("/upload-resume", { state: { job, email: job.email } });
@@ -91,7 +101,7 @@ function Jobdesc() {
               <div className="flex items-center gap-6 text-white/90">
                 <div className="flex items-center gap-2">
                   <Briefcase className="w-5 h-5" />
-                  <span>{job.company_id}</span>
+                  <span>{job.display_name}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
@@ -110,12 +120,12 @@ function Jobdesc() {
               >
                 Apply
               </button>
-              <button className="text-white border border-white/30 p-2 rounded-lg hover:bg-white/10 transition-colors">
+              {/* <button className="text-white border border-white/30 p-2 rounded-lg hover:bg-white/10 transition-colors">
                 <Heart className="w-6 h-6" />
               </button>
               <button className="text-white border border-white/30 p-2 rounded-lg hover:bg-white/10 transition-colors">
                 <Share2 className="w-6 h-6" />
-              </button>
+              </button> */}
             </div>
           </div>
 
@@ -144,10 +154,15 @@ function Jobdesc() {
 
             <div className="bg-[#1D1B27] rounded-xl p-8">
               <h2 className="text-2xl font-semibold text-white mb-4">Key Responsibilities</h2>
+              {/* Add fallback check if keyResponsibilities is an empty array */}
               <ul className="list-disc list-inside text-white/90 space-y-2">
-                {job.responsibilities.map((resp, index) => (
-                  <li key={index}>{resp}</li>
-                ))}
+                {job.keyResponsibilities && Array.isArray(job.keyResponsibilities) ? (
+                  job.keyResponsibilities.map((resp, index) => (
+                    <li key={index}>{resp}</li>
+                  ))
+                ) : (
+                  <li>No key responsibilities available</li>
+                )}
               </ul>
             </div>
 
@@ -182,10 +197,15 @@ function Jobdesc() {
 
             <div className="bg-[#1D1B27] rounded-xl p-8">
               <h2 className="text-2xl font-semibold text-white mb-4">Benefits</h2>
+              {/* Add fallback check if benefits is an empty array */}
               <ul className="list-disc list-inside text-white/90 space-y-2">
-                {job.benefits.map((benefit, index) => (
-                  <li key={index}>{benefit}</li>
-                ))}
+                {job.benefits && Array.isArray(job.benefits) ? (
+                  job.benefits.map((benefit, index) => (
+                    <li key={index}>{benefit}</li>
+                  ))
+                ) : (
+                  <li>No benefits available</li>
+                )}
               </ul>
             </div>
           </div>
