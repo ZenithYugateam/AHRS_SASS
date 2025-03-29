@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Edit, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -18,21 +18,24 @@ const PricingTable: React.FC = () => {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Fetch pricing plans from the get_pricing_list API.
   useEffect(() => {
     const fetchPlans = async () => {
       try {
         const response = await fetch('https://ngwu0au0uh.execute-api.us-east-1.amazonaws.com/default/get_pricing_list');
         const data = await response.json();
-        setPlans(data.map((plan: any) => ({
-          id: plan.id,
-          name: plan.name,
-          duration: Number(plan.duration),
-          tokensPerMinute: Number(plan.tokensPerMinute),
-          tokens: Number(plan.tokens),
-          price: Number(plan.price),
-          subscribers: Number(plan.subscribers),
-          revenue: Number(plan.revenue),
-        })));
+        setPlans(
+          data.map((plan: any) => ({
+            id: plan.id,
+            name: plan.name,
+            duration: Number(plan.duration),
+            tokensPerMinute: Number(plan.tokensPerMinute),
+            tokens: Number(plan.tokens),
+            price: Number(plan.price),
+            subscribers: Number(plan.subscribers),
+            revenue: Number(plan.revenue),
+          }))
+        );
       } catch (error) {
         console.error('Error fetching pricing plans:', error);
       } finally {
@@ -43,19 +46,58 @@ const PricingTable: React.FC = () => {
     fetchPlans();
   }, []);
 
+  // Fetch transactions from the dash API and update subscribers.
+  useEffect(() => {
+    // Only run this effect if there are already pricing plans loaded.
+    if (plans.length === 0) return;
+
+    const fetchTransactions = async () => {
+      try {
+        const response = await fetch('https://upftf5d4qb.execute-api.us-east-1.amazonaws.com/default/dash');
+        const transactions = await response.json();
+
+        // Filter transactions with a valid subscriptionType.
+        const validTransactions = transactions.filter((txn: any) => {
+          const subType = txn.subscriptionType?.trim();
+          return subType && subType.toLowerCase() !== 'unknown';
+        });
+
+        // Group transactions by subscription type using a Set for unique transactionIds.
+        const subscribersByType: { [key: string]: Set<string> } = {};
+        validTransactions.forEach((txn: any) => {
+          const subType = txn.subscriptionType.trim();
+          if (!subscribersByType[subType]) {
+            subscribersByType[subType] = new Set();
+          }
+          subscribersByType[subType].add(txn.transactionId);
+        });
+
+        // Update each plan's subscriber count based on matching plan name and subscription type.
+        setPlans(prevPlans =>
+          prevPlans.map(plan => {
+            const subsCount = subscribersByType[plan.name] ? subscribersByType[plan.name].size : 0;
+            return { ...plan, subscribers: subsCount };
+          })
+        );
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+      }
+    };
+
+    fetchTransactions();
+  }, [plans.length]);
+
   const handleDelete = async (id: string) => {
     try {
       const response = await fetch('https://hh1ljjljzj.execute-api.us-east-1.amazonaws.com/default/delete_pricing_plan', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
       });
 
       if (!response.ok) throw new Error('Failed to delete plan');
 
-      setPlans((prev) => prev.filter((plan) => plan.id !== id));
+      setPlans(prev => prev.filter(plan => plan.id !== id));
       toast.success('Plan deleted successfully');
     } catch (error) {
       console.error('Error deleting plan:', error);

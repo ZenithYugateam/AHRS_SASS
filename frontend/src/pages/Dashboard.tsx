@@ -1057,7 +1057,7 @@ function Dashboard() {
                   </h1>
                   <button
                     onClick={() => navigate("/post-job")}
-                    className="flex items-center gap-2 px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-md"
+                    className="flex items-center gap-2 px-4 py-2 pl-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-md"
                   >
                     <PlusCircle size={20} /> Post New Job
                   </button>
