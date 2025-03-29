@@ -8,6 +8,7 @@ interface Job {
   job_id: string;
   title: string;
   description?: string;
+  display_name:string;
   experience?: string;
   location?: string;
   salary?: string;
@@ -15,8 +16,10 @@ interface Job {
   posted_on?: string;
   job_posted?: string;
   approval?: boolean;
-  private_job?:boolean;
+  private_job?: boolean;
   college_names?: string;
+  keyResponsibilities?: string;
+  benefits?: string;
 }
 
 function CandidateHome() {
@@ -96,7 +99,8 @@ function CandidateHome() {
       filtered = filtered.filter((job) =>
         job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.company_id?.toLowerCase().includes(searchQuery.toLowerCase())
+        job.display_name
+        ?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     if (selectedLocation) {
@@ -153,7 +157,8 @@ function CandidateHome() {
       prefMatches = prefMatches.filter((job) =>
         job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.company_id?.toLowerCase().includes(searchQuery.toLowerCase())
+        job.display_name
+        ?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     if (selectedLocation) {
@@ -230,7 +235,7 @@ function CandidateHome() {
           {job.title}
         </motion.h3>
         <div className="inline-block bg-[#F700FC]/20 text-white text-sm font-medium px-2 py-1 rounded-full mt-1">
-          {job.company_id}
+          {job.display_name}
         </div>
         <p className="text-[12px] text-gray-400 mt-1">
           {new Date(job.posted_on || job.job_posted || Date.now()).toDateString()}

@@ -14,22 +14,30 @@ function PostJob() {
     experience: '',
     salary: '',
     location: '',
+    keyResponsibilities: '',
+    benefits: '',
     approvalRequired: false,
     privateJob: false,
     collegeNames: '',
   });
 
   useEffect(() => {
-    // Retrieve logged in user's email from sessionStorage
+    // Retrieve logged in user's data from sessionStorage
     const storedUser = sessionStorage.getItem('user');
     const sessionEmail = storedUser ? JSON.parse(storedUser).email : 'default@example.com';
+    const sessionDisplayName = storedUser ? JSON.parse(storedUser).username : 'No Display Name';  // Retrieve displayName directly from sessionStorage
     const randomJobId = Math.floor(Math.random() * 1000000); // generate random job id
-
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      console.log('User Data:', userData);  // Print user data to the console
+    } else {
+      console.log('No user data found in sessionStorage');
+    }
     setFormData((prevData) => ({
       ...prevData,
       companyId: sessionEmail,
       jobId: randomJobId,
-      displayName: "zenithyugaa",
+      displayName: sessionDisplayName,  // Set displayName from sessionStorage
     }));
   }, []);
 
@@ -123,7 +131,6 @@ function PostJob() {
                   type="text"
                   name="displayName"
                   value={formData.displayName}
-                  onChange={handleChange}
                   className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   readOnly
                 />
@@ -157,6 +164,29 @@ function PostJob() {
               <textarea
                 name="description"
                 value={formData.description}
+                onChange={handleChange}
+                rows={4}
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* New Fields for Key Responsibilities and Benefits */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Key Responsibilities</label>
+              <textarea
+                name="keyResponsibilities"
+                value={formData.keyResponsibilities}
+                onChange={handleChange}
+                rows={4}
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Benefits</label>
+              <textarea
+                name="benefits"
+                value={formData.benefits}
                 onChange={handleChange}
                 rows={4}
                 className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -237,7 +267,6 @@ function PostJob() {
                 />
               </div>
             )}
-
 
             <div className="flex justify-end gap-4 pt-6">
               <button
