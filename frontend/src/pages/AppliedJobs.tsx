@@ -98,7 +98,7 @@ function AppliedJobs() {
     if (searchQuery) {
       filtered = filtered.filter((job) =>
         (job.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-        (job.company_id?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (job.display_name?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
         (job.description?.toLowerCase() || "").includes(searchQuery.toLowerCase())
       );
     }
@@ -114,7 +114,7 @@ function AppliedJobs() {
 
     if (selectedCompany) {
       filtered = filtered.filter((job) =>
-        (job.company_id?.toLowerCase() || "").includes(selectedCompany.toLowerCase())
+        (job.display_name?.toLowerCase() || "").includes(selectedCompany.toLowerCase())
       );
     }
 
@@ -129,7 +129,7 @@ function AppliedJobs() {
     setFilteredJobs(filtered);
   }, [searchQuery, selectedStatus, selectedCompany, sortByDate, appliedJobs]);
 
-  const uniqueCompanies = Array.from(new Set(appliedJobs.map((job) => job.company_id || "Unknown")));
+  const uniqueCompanies = Array.from(new Set(appliedJobs.map((job) => job.display_name|| "Unknown")));
 
   const handleLogout = () => {
     sessionStorage.removeItem("user");
@@ -347,7 +347,7 @@ function AppliedJobs() {
                         {job.title || "Untitled Job"}
                       </motion.h3>
                       <div className="inline-block bg-[#F700FC]/20 text-white text-sm font-medium px-3 py-1 rounded-full mt-2">
-                        {job.company_id || "Unknown Company"}
+                        {job.display_name|| "Unknown Company"}
                       </div>
                       <p className="text-[14px] text-gray-400 mt-2">
                         {job.posted_on ? new Date(job.posted_on).toDateString() : "N/A"}
@@ -356,7 +356,7 @@ function AppliedJobs() {
                     <div className="mt-4 flex flex-col gap-2 text-base text-[#B0B0B0]">
                       <div className="flex items-center gap-2">
                         <Building className="h-5 w-5 text-[#F700FC]" />
-                        <span className="line-clamp-1">{job.company_id || "N/A"}</span>
+                        <span className="line-clamp-1">{job.display_name || "N/A"}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-5 w-5 text-[#F700FC]" />

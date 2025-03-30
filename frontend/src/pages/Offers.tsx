@@ -96,7 +96,7 @@ function Offers() {
         return {
           job_id: job.job_id,
           title: job.title || "Untitled Job",
-          companyName: job.company_id,
+          companyName: job.display_name,
           description: job.description || "No description available",
           date: job.posted_on || "",
           status: candidate ? candidate.status : null,
