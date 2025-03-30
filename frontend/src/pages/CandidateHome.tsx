@@ -8,7 +8,6 @@ interface Job {
   job_id: string;
   title: string;
   description?: string;
-  display_name:string;
   experience?: string;
   location?: string;
   salary?: string;
@@ -18,8 +17,7 @@ interface Job {
   approval?: boolean;
   private_job?: boolean;
   college_names?: string;
-  keyResponsibilities?: string;
-  benefits?: string;
+  status?: string; // Add status to the interface (optional field)
 }
 
 function CandidateHome() {
@@ -34,7 +32,6 @@ function CandidateHome() {
   const [isJobsDropdownOpen, setIsJobsDropdownOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [myCollegePost, setMyCollegePost] = useState(false);
-
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
@@ -72,8 +69,12 @@ function CandidateHome() {
           { timeout: 5000, headers: { "Content-Type": "application/json" } }
         );
         if (response.data && response.data.data) {
-          setJobData(response.data.data);
-          setFilteredJobs(response.data.data);
+          // Filter jobs to only include those without a 'status' field or where 'status' is undefined
+          const filteredData = response.data.data.filter(
+            (job: Job) => !job.status // Only keep jobs where status is undefined or not present
+          );
+          setJobData(filteredData);
+          setFilteredJobs(filteredData);
         } else {
           setError("No job data found");
         }
@@ -99,8 +100,7 @@ function CandidateHome() {
       filtered = filtered.filter((job) =>
         job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.display_name
-        ?.toLowerCase().includes(searchQuery.toLowerCase())
+        job.company_id?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     if (selectedLocation) {
@@ -123,24 +123,18 @@ function CandidateHome() {
         return dateB - dateA;
       });
     }
-  
-    // Apply "My College Posts Only" filter
+
     if (myCollegePost) {
-      // Retrieve user data from session storage and parse it
       const storedUser = sessionStorage.getItem("user");
       const userData = storedUser ? JSON.parse(storedUser) : null;
-      // Get the selected college from userData
       const candidateCollege = userData ? userData.selectedCollege : "";
-    
       filtered = filtered.filter(
         (job) => job.private_job === true && job.college_names?.includes(candidateCollege)
       );
     }
-    
-  
+
     setFilteredJobs(filtered);
-  
-    // Preference-based filtering for "filteredPreferenceMatches"
+
     let prefMatches = jobData.filter((job) => {
       if (!jobPreferences || jobPreferences.length === 0) return false;
       return jobPreferences.some((pref) => {
@@ -151,14 +145,12 @@ function CandidateHome() {
         );
       });
     });
-  
-    // Apply the same filters to "prefMatches"
+
     if (searchQuery) {
       prefMatches = prefMatches.filter((job) =>
         job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.display_name
-        ?.toLowerCase().includes(searchQuery.toLowerCase())
+        job.company_id?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     if (selectedLocation) {
@@ -175,19 +167,14 @@ function CandidateHome() {
       );
     }
     if (myCollegePost) {
-      // Retrieve user data from session storage and parse it
       const storedUser = sessionStorage.getItem("user");
       const userData = storedUser ? JSON.parse(storedUser) : null;
-      // Get the selected college from userData
       const candidateCollege = userData ? userData.selectedCollege : "";
-    
-      filtered = filtered.filter(
+      prefMatches = prefMatches.filter(
         (job) => job.private_job === true && job.college_names?.includes(candidateCollege)
       );
     }
-    
-  
-    // Apply sorting for preferences
+
     if (sortByNewest) {
       prefMatches.sort((a, b) => {
         const dateA = new Date(a.posted_on || a.job_posted || Date.now()).getTime();
@@ -195,11 +182,9 @@ function CandidateHome() {
         return dateB - dateA;
       });
     }
-  
+
     setFilteredPreferenceMatches(prefMatches);
-  
   }, [searchQuery, selectedLocation, selectedTags, sortByNewest, jobData, jobPreferences, myCollegePost]);
-  
 
   const renderJobCard = (job: Job, index: number) => (
     <motion.div
@@ -207,24 +192,19 @@ function CandidateHome() {
       onClick={() => handleJobClick(job)}
       className="w-[300px] h-[300px] bg-[#1E1A2B] rounded-2xl p-5 shadow-inner 
                  hover:shadow-[0_0_15px_rgba(247,0,252,0.5)] transition-all duration-300 
-                 cursor-pointer relative overflow-hidden" // Added overflow-hidden to contain content
+                 cursor-pointer relative overflow-hidden"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ scale: 1.02, y: -5 }}
       transition={{ duration: 0.5, delay: index * 0.1, type: "spring" }}
     >
-      {/* Gradient Line at the Top */}
       <div className="h-2 w-full bg-gradient-to-r from-[#F700FC] to-[#2941B9] rounded-t-lg absolute top-0 left-0" />
-
-      {/* Status Badge at Top-Right */}
       <div className="absolute top-4 right-4">
         <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-medium text-white
                           ${job.approval ? "bg-green-500/80" : "bg-yellow-500/80"}`}>
           {job.approval ? "Eligible" : "Pending"}
         </span>
       </div>
-
-      {/* Header Content with Reduced Spacing */}
       <div className="mt-6">
         <motion.h3
           className="text-xl font-bold text-white line-clamp-2"
@@ -235,15 +215,13 @@ function CandidateHome() {
           {job.title}
         </motion.h3>
         <div className="inline-block bg-[#F700FC]/20 text-white text-sm font-medium px-2 py-1 rounded-full mt-1">
-          {job.display_name}
+          {job.company_id}
         </div>
         <p className="text-[12px] text-gray-400 mt-1">
           {new Date(job.posted_on || job.job_posted || Date.now()).toDateString()}
         </p>
       </div>
-
-      {/* Body */}
-      <div className="mt-3 flex flex-col gap-1 text-base text-[#B0B0B0]"> {/* Reduced mt-4 to mt-3 and gap-2 to gap-1 */}
+      <div className="mt-3 flex flex-col gap-1 text-base text-[#B0B0B0]">
         <div className="flex items-center gap-2">
           <Briefcase className="h-4 w-4 text-[#F700FC]" />
           <span className="line-clamp-1">{job.experience || "N/A"}</span>
@@ -256,10 +234,10 @@ function CandidateHome() {
           <DollarSign className="h-4 w-4 text-[#F700FC]" />
           <span className="text-white relative line-clamp-1">
             {job.salary || "N/A"}
-            <div className="absolute -bottom-1 left-0 w-full h-1.5 bg-[#F700FC] rounded opacity-80" /> {/* Made underline thicker and more visible */}
+            <div className="absolute -bottom-1 left-0 w-full h-1.5 bg-[#F700FC] rounded opacity-80" />
           </span>
         </div>
-        <p className="text-[14px] text-gray-400 line-clamp-1 mt-1"> {/* Reduced to line-clamp-1 */}
+        <p className="text-[14px] text-gray-400 line-clamp-1 mt-1">
           {job.description || "N/A"}
         </p>
       </div>
@@ -335,16 +313,17 @@ function CandidateHome() {
               )}
             </div>
             <div className="relative">
-              <button className="flex items-center space-x-2"   onClick={() => {
-                      navigate("/profile");
-                      setIsProfileDropdownOpen(false);
-                    }}>
+              <button
+                className="flex items-center space-x-2"
+                onClick={() => {
+                  navigate("/profile");
+                  setIsProfileDropdownOpen(false);
+                }}
+              >
                 <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
                   <User className="h-6 w-6 text-[#1A1528]" />
                 </div>
-                <span className="text-white">
-                  {username} 
-                </span>
+                <span className="text-white">{username}</span>
               </button>
             </div>
             <button
@@ -376,15 +355,15 @@ function CandidateHome() {
                          focus:outline-none focus:ring-2 focus:ring-[#F700FC]"
             />
             <div className="flex flex-wrap gap-4">
-            <label className="flex items-center text-white">
-    <input
-      type="checkbox"
-      checked={myCollegePost}
-      onChange={() => setMyCollegePost((prev) => !prev)}
-      className="mr-2"
-    />
-    My College Posts Only
-  </label>
+              <label className="flex items-center text-white">
+                <input
+                  type="checkbox"
+                  checked={myCollegePost}
+                  onChange={() => setMyCollegePost((prev) => !prev)}
+                  className="mr-2"
+                />
+                My College Posts Only
+              </label>
               <select
                 value={selectedLocation}
                 onChange={(e) => setSelectedLocation(e.target.value)}

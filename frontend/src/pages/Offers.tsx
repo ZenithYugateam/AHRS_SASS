@@ -19,11 +19,11 @@ const StatusBadge = ({ statusText, type }) => {
   const getStatusColor = () => {
     switch (type) {
       case 'success':
-        return 'bg-green-500/80 text-white'; // Updated to match screenshot
+        return 'bg-green-500/80 text-white'; 
       case 'rejected':
-        return 'bg-red-500/80 text-white'; // Updated to match screenshot
+        return 'bg-red-500/80 text-white'; 
       default:
-        return 'bg-yellow-500/80 text-white'; // Updated to match screenshot
+        return 'bg-yellow-500/80 text-white'; 
     }
   };
 
@@ -116,21 +116,22 @@ function Offers() {
               }
             );
             const data = statusResponse.data;
-            if (data && data.status !== undefined && data.status !== null) {
-              return {
-                ...offer,
-                status: data.status,
-                managerMessage: data.managerMessage || offer.managerMessage,
-              };
+            if (data && data.status === "success") {
+              // Find the specific status for the current candidate's job
+              const jobStatus = data.data.find(item => item.candidateId === candidateEmail && item.jobId === offer.job_id);
+
+              if (jobStatus) {
+                return {
+                  ...offer,
+                  status: jobStatus.status, // Update with the correct status
+                  managerMessage: jobStatus.managerMessage || offer.managerMessage,
+                };
+              }
             }
             return offer;
           } catch (error) {
-            if (error.response && error.response.status === 404) {
-              console.log(`No status update found for job_id ${offer.job_id}.`);
-            } else {
-              console.error(`Error fetching status for job_id ${offer.job_id}:`, error);
-            }
-            return offer;
+            console.error(`Error fetching status for job_id ${offer.job_id}:`, error);
+            return offer; // Return the offer even if the status fetch fails
           }
         })
       );
