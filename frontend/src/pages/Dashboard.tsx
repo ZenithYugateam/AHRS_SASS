@@ -128,12 +128,8 @@ function Dashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<TokenPackage | null>(
-    null
-  );
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
-    null
-  );
+  const [selectedPackage, setSelectedPackage] = useState<TokenPackage | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentType, setPaymentType] = useState<"token" | "plan" | null>(null);
   const [customTokenModalOpen, setCustomTokenModalOpen] = useState(false);
@@ -145,13 +141,14 @@ function Dashboard() {
   const [totalParticipants, setTotalParticipants] = useState<number>(0);
   const [totalQualified, setTotalQualified] = useState<number>(0);
   const [jobStatuses, setJobStatuses] = useState<{ [key: string]: string }>({});
+  const [newlyPostedJob, setNewlyPostedJob] = useState<Job | null>(null); // New state for newly posted job
 
   // Calculate price based on token amount (example rate: $0.15 per token)
   useEffect(() => {
     setCustomTokenPrice(Math.ceil(customTokenAmount * 0.15));
   }, [customTokenAmount]);
 
-  // On mount, parse the "user" object from sessionStorage
+  // On mount, parse the "user" object from sessionStorage and check for newly posted job
   useEffect(() => {
     const userData = sessionStorage.getItem("user");
     if (userData) {
@@ -164,6 +161,16 @@ function Dashboard() {
         console.error("Error parsing user data:", error);
       }
     }
+
+    // Check if a new job was posted
+    const jobData = sessionStorage.getItem("newlyPostedJob");
+    if (jobData) {
+      const job = JSON.parse(jobData);
+      setNewlyPostedJob(job);
+      setCurrentPage("interview-maker"); // Switch to interview-maker page
+      sessionStorage.removeItem("newlyPostedJob"); // Clean up
+    }
+
     setIsLoading(false);
   }, []);
 
@@ -172,9 +179,7 @@ function Dashboard() {
     setIsLoading(true);
     try {
       if (!sessionEmail) {
-        console.warn(
-          "No email found in session storage for subscription fetch."
-        );
+        console.warn("No email found in session storage for subscription fetch.");
         setIsLoading(false);
         return;
       }
@@ -182,17 +187,12 @@ function Dashboard() {
         `https://ywl2agqqd3.execute-api.us-east-1.amazonaws.com/default/fechdetails?email=${sessionEmail}`
       );
 
-      if (
-        response.data &&
-        response.data.subscriptions &&
-        response.data.subscriptions.length > 0
-      ) {
+      if (response.data && response.data.subscriptions && response.data.subscriptions.length > 0) {
         const sub = response.data.subscriptions[0];
 
         // Find matching plan from pricing data
         const matchingPlan = pricingData.plans.find(
-          (plan) =>
-            plan.name.toLowerCase() === sub.subscriptionType?.toLowerCase()
+          (plan) => plan.name.toLowerCase() === sub.subscriptionType?.toLowerCase()
         );
 
         if (matchingPlan) {
@@ -243,7 +243,8 @@ function Dashboard() {
       setIsLoading(false);
     }
   };
-  //Job active and delete
+
+  // Job active and delete
   const handleToggleJobStatus = (jobId: string) => {
     setJobStatuses((prevStatuses) => ({
       ...prevStatuses,
@@ -251,7 +252,6 @@ function Dashboard() {
     }));
   };
 
-  // Delete Job  Call
   const handleDeleteJob = (jobId: string) => {
     setJobs((prevJobs) => prevJobs.filter((job) => job.job_id !== jobId));
   };
@@ -266,7 +266,12 @@ function Dashboard() {
         "https://ujohw8hshk.execute-api.us-east-1.amazonaws.com/default/get_company_posted_jobs",
         { company_id: companyId }
       );
-      setJobs(response.data.jobs || []);
+      let updatedJobs = response.data.jobs || [];
+      if (newlyPostedJob) {
+        updatedJobs = [...updatedJobs, newlyPostedJob];
+        setNewlyPostedJob(null); // Clear after adding
+      }
+      setJobs(updatedJobs);
     } catch (error) {
       console.error("Error fetching jobs:", error);
       setJobs([]);
@@ -319,9 +324,7 @@ function Dashboard() {
 
       setTotalInterviews(jobsData.length);
       setTotalParticipants(candidateRows.length);
-      setTotalQualified(
-        candidateRows.filter((candidate) => candidate.status === 10).length
-      );
+      setTotalQualified(candidateRows.filter((candidate) => candidate.status === 10).length);
     } catch (error) {
       console.error("Error fetching interview stats:", error);
     }
@@ -339,7 +342,6 @@ function Dashboard() {
       };
     }
 
-    // If API returns an object with both plans and tokenPackages, use them directly
     if (apiData.plans && apiData.tokenPackages) {
       return {
         plans: apiData.plans.map((item: any, index: number) => ({
@@ -347,7 +349,6 @@ function Dashboard() {
           name: item.name || `Plan ${index + 1}`,
           price: parseFloat(item.price) || 0,
           description: item.description || "",
-          // If features exist, use them; otherwise build from item tokens, duration, tokensPerMinute
           features: item.features?.length
             ? item.features
             : [
@@ -365,7 +366,6 @@ function Dashboard() {
       };
     }
 
-    // If API returns an array, assume it is a list of plans
     if (Array.isArray(apiData)) {
       const plans: SubscriptionPlan[] = apiData.map((item, index) => ({
         id: item.id || `plan-${index}`,
@@ -388,7 +388,6 @@ function Dashboard() {
       return { plans, tokenPackages: [] };
     }
 
-    // If the API returns a single plan object
     if (typeof apiData === "object" && apiData.id && apiData.name) {
       const plan: SubscriptionPlan = {
         id: apiData.id,
@@ -411,7 +410,6 @@ function Dashboard() {
       return { plans: [plan], tokenPackages: [] };
     }
 
-    // Default fallback
     return {
       plans: [],
       tokenPackages: [],
@@ -569,6 +567,11 @@ function Dashboard() {
     setPaymentModalOpen(true);
   };
 
+  // Handler for Post New Job
+  const handlePostNewJob = () => {
+    navigate("/post-job", { state: { fromDashboard: true } });
+  };
+
   return (
     <div className="min-h-screen bg-[#0f172a] text-white">
       {/* Payment Success Notification */}
@@ -593,9 +596,7 @@ function Dashboard() {
                 min="1"
                 value={customTokenAmount}
                 onChange={(e) =>
-                  setCustomTokenAmount(
-                    Math.max(1, parseInt(e.target.value) || 0)
-                  )
+                  setCustomTokenAmount(Math.max(1, parseInt(e.target.value) || 0))
                 }
                 className="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white"
               />
@@ -695,8 +696,8 @@ function Dashboard() {
             href="#"
             className="flex items-center space-x-2 hover:text-purple-400"
             onClick={(e) => {
-              e.preventDefault(); // Prevent default link behavior
-              navigate("/Companyprofile"); // Navigate to the profile page
+              e.preventDefault();
+              navigate("/Companyprofile");
             }}
           >
             <User size={20} />
@@ -868,7 +869,6 @@ function Dashboard() {
                             <button
                               className="bg-purple-900 text-white hover:bg-purple-800 px-4 py-2 rounded-md text-sm font-medium"
                               onClick={() => {
-                                // Example: If you have an enterprise plan with id "enterprise"
                                 const enterprisePlan = pricingData.plans.find(
                                   (p) => p.id === "enterprise"
                                 );
@@ -968,7 +968,6 @@ function Dashboard() {
                           </p>
                           <ul className="space-y-3 mb-6">
                             {plan.features.map((feature, index) => {
-                              // Example check for "API access" (if needed):
                               const isIncluded =
                                 !feature.includes("API access") ||
                                 plan.id === "enterprise";
@@ -1056,7 +1055,7 @@ function Dashboard() {
                     Company Posted Jobs
                   </h1>
                   <button
-                    onClick={() => navigate("/post-job")}
+                    onClick={handlePostNewJob} // Updated to use the new handler
                     className="flex items-center gap-2 px-4 py-2 pl-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-md"
                   >
                     <PlusCircle size={20} /> Post New Job
@@ -1070,7 +1069,7 @@ function Dashboard() {
                       jobs.map((job) => (
                         <div
                           key={job.job_id}
-                          className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-all duration-300 shadow-md flex flex-col h-[350px]" // Fixed height for the card
+                          className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-all duration-300 shadow-md flex flex-col h-[350px]"
                         >
                           {/* Job Title and Actions */}
                           <div className="flex justify-between items-center mb-4">
@@ -1177,7 +1176,7 @@ function Dashboard() {
                           There are currently no jobs posted by your company.
                         </p>
                         <button
-                          onClick={() => navigate("/post-job")}
+                          onClick={handlePostNewJob} // Updated to use the new handler
                           className="bg-purple-600 hover:bg-purple-700 px-5 py-2 rounded-lg inline-flex items-center text-white font-medium"
                         >
                           <PlusCircle size={16} className="mr-2" /> Post a New Job
