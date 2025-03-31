@@ -97,12 +97,11 @@ function CandidateHome() {
 
   useEffect(() => {
     let filtered = [...jobData];
-<<<<<<< Updated upstream
     if (searchQuery) {
       filtered = filtered.filter((job) =>
         job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.dis?.toLowerCase().includes(searchQuery.toLowerCase())
+        job.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
     if (selectedLocation) {
@@ -133,55 +132,6 @@ function CandidateHome() {
       filtered = filtered.filter(
         (job) => job.private_job === true && job.college_names?.includes(candidateCollege)
       );
-=======
-    
-    // When ALL is selected, show all jobs and only apply sorting if enabled
-    if (selectedTags.includes("ALL")) {
-      if (sortByNewest) {
-        filtered.sort((a, b) => {
-          const dateA = new Date(a.posted_on || a.job_posted || Date.now()).getTime();
-          const dateB = new Date(b.posted_on || b.job_posted || Date.now()).getTime();
-          return dateB - dateA;
-        });
-      }
-    } else {
-      // Apply all filters when ALL is not selected
-      if (searchQuery) {
-        filtered = filtered.filter((job) =>
-          job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.company_id?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      }
-      if (selectedLocation) {
-        filtered = filtered.filter((job) =>
-          job.location?.toLowerCase().includes(selectedLocation.toLowerCase())
-        );
-      }
-      if (selectedTags.length > 0) {
-        filtered = filtered.filter((job) =>
-          selectedTags.some((tag) =>
-            job.title?.toLowerCase().includes(tag.toLowerCase()) ||
-            job.description?.toLowerCase().includes(tag.toLowerCase())
-          )
-        );
-      }
-      if (myCollegePost) {
-        const storedUser = sessionStorage.getItem("user");
-        const userData = storedUser ? JSON.parse(storedUser) : null;
-        const candidateCollege = userData ? userData.selectedCollege : "";
-        filtered = filtered.filter(
-          (job) => job.private_job === true && job.college_names?.includes(candidateCollege)
-        );
-      }
-      if (sortByNewest) {
-        filtered.sort((a, b) => {
-          const dateA = new Date(a.posted_on || a.job_posted || Date.now()).getTime();
-          const dateB = new Date(b.posted_on || b.job_posted || Date.now()).getTime();
-          return dateB - dateA;
-        });
-      }
->>>>>>> Stashed changes
     }
 
     setFilteredJobs(filtered);
@@ -197,45 +147,12 @@ function CandidateHome() {
       });
     });
 
-<<<<<<< Updated upstream
     if (searchQuery) {
       prefMatches = prefMatches.filter((job) =>
         job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
-=======
-    // Similar logic for preference matches
-    if (!selectedTags.includes("ALL")) {
-      if (searchQuery) {
-        prefMatches = prefMatches.filter((job) =>
-          job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.company_id?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      }
-      if (selectedLocation) {
-        prefMatches = prefMatches.filter((job) =>
-          job.location?.toLowerCase().includes(selectedLocation.toLowerCase())
-        );
-      }
-      if (selectedTags.length > 0) {
-        prefMatches = prefMatches.filter((job) =>
-          selectedTags.some((tag) =>
-            job.title?.toLowerCase().includes(tag.toLowerCase()) ||
-            job.description?.toLowerCase().includes(tag.toLowerCase())
-          )
-        );
-      }
-      if (myCollegePost) {
-        const storedUser = sessionStorage.getItem("user");
-        const userData = storedUser ? JSON.parse(storedUser) : null;
-        const candidateCollege = userData ? userData.selectedCollege : "";
-        prefMatches = prefMatches.filter(
-          (job) => job.private_job === true && job.college_names?.includes(candidateCollege)
-        );
-      }
->>>>>>> Stashed changes
     }
     
     if (sortByNewest) {
