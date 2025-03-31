@@ -65,8 +65,8 @@ function PostJob() {
       const result = await response.json();
       if (response.ok) {
         alert('Job posted successfully!');
-        // Redirect to the interview maker stepper view
-        navigate('/Company-dashboard');
+        // Navigate to the Interview Maker page after the job is posted
+        navigate('/company-dashboard#');  // Change this to the actual Interview Maker page route
       } else {
         alert('Error posting job');
       }
