@@ -18,7 +18,7 @@ interface Job {
   approval?: boolean;
   private_job?: boolean;
   college_names?: string;
-  status?: string;
+  status?: string; // Add status to the interface (optional field)
 }
 
 function CandidateHome() {
@@ -37,13 +37,12 @@ function CandidateHome() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [sortByNewest, setSortByNewest] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<string[]>(["ALL"]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
 
   const availableStacks = [
-    "ALL",
     "AI", "ML", "MERN Stack", "Full Stack", "Backend", "Frontend",
     "DevOps", "Data Science", "Cybersecurity", "Mobile Dev"
   ];
@@ -71,8 +70,9 @@ function CandidateHome() {
           { timeout: 5000, headers: { "Content-Type": "application/json" } }
         );
         if (response.data && response.data.data) {
+          // Filter jobs to only include those without a 'status' field or where 'status' is undefined
           const filteredData = response.data.data.filter(
-            (job: Job) => !job.status
+            (job: Job) => !job.status // Only keep jobs where status is undefined or not present
           );
           setJobData(filteredData);
           setFilteredJobs(filteredData);
@@ -154,7 +154,28 @@ function CandidateHome() {
         job.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    
+    if (selectedLocation) {
+      prefMatches = prefMatches.filter((job) =>
+        job.location?.toLowerCase().includes(selectedLocation.toLowerCase())
+      );
+    }
+    if (selectedTags.length > 0) {
+      prefMatches = prefMatches.filter((job) =>
+        selectedTags.some((tag) =>
+          job.title?.toLowerCase().includes(tag.toLowerCase()) ||
+          job.description?.toLowerCase().includes(tag.toLowerCase())
+        )
+      );
+    }
+    if (myCollegePost) {
+      const storedUser = sessionStorage.getItem("user");
+      const userData = storedUser ? JSON.parse(storedUser) : null;
+      const candidateCollege = userData ? userData.selectedCollege : "";
+      prefMatches = prefMatches.filter(
+        (job) => job.private_job === true && job.college_names?.includes(candidateCollege)
+      );
+    }
+
     if (sortByNewest) {
       prefMatches.sort((a, b) => {
         const dateA = new Date(a.posted_on || a.job_posted || Date.now()).getTime();
@@ -246,7 +267,6 @@ function CandidateHome() {
     sessionStorage.removeItem("user");
     navigate("/");
   };
-  
   const toggleJobsDropdown = () => setIsJobsDropdownOpen((prev) => !prev);
   const toggleProfileDropdown = () => setIsProfileDropdownOpen((prev) => !prev);
 
@@ -369,18 +389,9 @@ function CandidateHome() {
                   <button
                     key={tag}
                     onClick={() => {
-                      setSelectedTags((prev) => {
-                        if (tag === "ALL") {
-                          return ["ALL"];
-                        }
-                        if (prev.includes("ALL")) {
-                          return [tag];
-                        }
-                        if (prev.includes(tag)) {
-                          return prev.filter((t) => t !== tag);
-                        }
-                        return [...prev, tag];
-                      });
+                      setSelectedTags((prev) =>
+                        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                      );
                     }}
                     className={`px-3 py-1 rounded-full text-sm text-white 
                                ${selectedTags.includes(tag) ? "bg-[#F700FC]" : "bg-[#2A2538]"} 
