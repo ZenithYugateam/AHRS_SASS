@@ -98,6 +98,7 @@ interface Job {
   location?: string;
   salary?: string;
   company_id: string;
+  posted_on?: string;
 }
 
 // Define CandidateRow type for interview stats API response
@@ -128,8 +129,12 @@ function Dashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<TokenPackage | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<TokenPackage | null>(
+    null
+  );
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
+    null
+  );
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentType, setPaymentType] = useState<"token" | "plan" | null>(null);
   const [customTokenModalOpen, setCustomTokenModalOpen] = useState(false);
@@ -141,14 +146,13 @@ function Dashboard() {
   const [totalParticipants, setTotalParticipants] = useState<number>(0);
   const [totalQualified, setTotalQualified] = useState<number>(0);
   const [jobStatuses, setJobStatuses] = useState<{ [key: string]: string }>({});
-  const [newlyPostedJob, setNewlyPostedJob] = useState<Job | null>(null); // New state for newly posted job
 
   // Calculate price based on token amount (example rate: $0.15 per token)
   useEffect(() => {
     setCustomTokenPrice(Math.ceil(customTokenAmount * 0.15));
   }, [customTokenAmount]);
 
-  // On mount, parse the "user" object from sessionStorage and check for newly posted job
+  // On mount, parse the "user" object from sessionStorage
   useEffect(() => {
     const userData = sessionStorage.getItem("user");
     if (userData) {
@@ -161,16 +165,6 @@ function Dashboard() {
         console.error("Error parsing user data:", error);
       }
     }
-
-    // Check if a new job was posted
-    const jobData = sessionStorage.getItem("newlyPostedJob");
-    if (jobData) {
-      const job = JSON.parse(jobData);
-      setNewlyPostedJob(job);
-      setCurrentPage("interview-maker"); // Switch to interview-maker page
-      sessionStorage.removeItem("newlyPostedJob"); // Clean up
-    }
-
     setIsLoading(false);
   }, []);
 
@@ -179,7 +173,9 @@ function Dashboard() {
     setIsLoading(true);
     try {
       if (!sessionEmail) {
-        console.warn("No email found in session storage for subscription fetch.");
+        console.warn(
+          "No email found in session storage for subscription fetch."
+        );
         setIsLoading(false);
         return;
       }
@@ -187,16 +183,18 @@ function Dashboard() {
         `https://ywl2agqqd3.execute-api.us-east-1.amazonaws.com/default/fechdetails?email=${sessionEmail}`
       );
 
-      if (response.data && response.data.subscriptions && response.data.subscriptions.length > 0) {
+      if (
+        response.data &&
+        response.data.subscriptions &&
+        response.data.subscriptions.length > 0
+      ) {
         const sub = response.data.subscriptions[0];
-
-        // Find matching plan from pricing data
         const matchingPlan = pricingData.plans.find(
-          (plan) => plan.name.toLowerCase() === sub.subscriptionType?.toLowerCase()
+          (plan) =>
+            plan.name.toLowerCase() === sub.subscriptionType?.toLowerCase()
         );
 
         if (matchingPlan) {
-          // Update the matching plan with current subscription details
           const updatedPlan = {
             ...matchingPlan,
             tokens: parseInt(sub.tokensLeft) || matchingPlan.tokens,
@@ -208,8 +206,6 @@ function Dashboard() {
             ],
           };
           setCurrentPlan(updatedPlan);
-
-          // Update pricing data to reflect current plan
           setPricingData((prev) => ({
             ...prev,
             plans: prev.plans.map((plan) => ({
@@ -218,7 +214,6 @@ function Dashboard() {
             })),
           }));
         } else {
-          // If no matching plan, create a new one from subscription data
           const newPlan: SubscriptionPlan = {
             id: sub.transactionId || "current-plan",
             name: sub.subscriptionType || "Current Plan",
@@ -266,19 +261,13 @@ function Dashboard() {
         "https://ujohw8hshk.execute-api.us-east-1.amazonaws.com/default/get_company_posted_jobs",
         { company_id: companyId }
       );
-      let updatedJobs = response.data.jobs || [];
-      if (newlyPostedJob) {
-        updatedJobs = [...updatedJobs, newlyPostedJob];
-        setNewlyPostedJob(null); // Clear after adding
-      }
-      setJobs(updatedJobs);
+      setJobs(response.data.jobs || []);
     } catch (error) {
       console.error("Error fetching jobs:", error);
       setJobs([]);
     }
   };
 
-  // Fetch pricing data from your API
   const fetchPricingData = async () => {
     setIsLoading(true);
     try {
@@ -297,7 +286,6 @@ function Dashboard() {
     }
   };
 
-  // Fetch interview statistics
   const fetchInterviewStats = async () => {
     try {
       if (!sessionEmail) return;
@@ -324,22 +312,17 @@ function Dashboard() {
 
       setTotalInterviews(jobsData.length);
       setTotalParticipants(candidateRows.length);
-      setTotalQualified(candidateRows.filter((candidate) => candidate.status === 10).length);
+      setTotalQualified(
+        candidateRows.filter((candidate) => candidate.status === 10).length
+      );
     } catch (error) {
       console.error("Error fetching interview stats:", error);
     }
   };
 
-  /**
-   * Transform API response to populate pricing data.
-   * If the API does not provide an explicit features array, we build it dynamically.
-   */
   const transformApiResponse = (apiData: any): PricingData => {
     if (!apiData) {
-      return {
-        plans: [],
-        tokenPackages: [],
-      };
+      return { plans: [], tokenPackages: [] };
     }
 
     if (apiData.plans && apiData.tokenPackages) {
@@ -410,13 +393,9 @@ function Dashboard() {
       return { plans: [plan], tokenPackages: [] };
     }
 
-    return {
-      plans: [],
-      tokenPackages: [],
-    };
+    return { plans: [], tokenPackages: [] };
   };
 
-  // Fetch data on mount
   useEffect(() => {
     if (sessionEmail) {
       fetchPricingData().then(() => {
@@ -429,12 +408,10 @@ function Dashboard() {
     fetchCompanyJobs();
   }, [sessionEmail]);
 
-  // Toggle subscription panel
   const toggleSubscription = () => {
     setIsSubscriptionExpanded(!isSubscriptionExpanded);
   };
 
-  // Navigation helper
   const navigateTo = (page: string) => {
     setCurrentPage(page);
     if (page !== "home") {
@@ -442,24 +419,20 @@ function Dashboard() {
     }
   };
 
-  // Open Interview Maker
   const openInterviewMaker = () => {
     setCurrentPage("interview-maker");
   };
 
-  // Handle applying to a job
   const handleApply = (job: Job) => {
     navigate("/interview-maker", { state: job });
   };
 
-  // Handle logout
   const handleLogout = () => {
     sessionStorage.clear();
     localStorage.clear();
     navigate("/");
   };
 
-  // Handle token package purchase
   const handlePurchaseTokens = (pkg: TokenPackage) => {
     setSelectedPackage(pkg);
     setSelectedPlan(null);
@@ -467,7 +440,6 @@ function Dashboard() {
     setPaymentModalOpen(true);
   };
 
-  // Handle subscription plan selection
   const handleSelectPlan = (plan: SubscriptionPlan) => {
     setSelectedPlan(plan);
     setSelectedPackage(null);
@@ -475,7 +447,6 @@ function Dashboard() {
     setPaymentModalOpen(true);
   };
 
-  // Handle payment success
   const handlePaymentSuccess = () => {
     if (paymentType === "token" && selectedPackage) {
       setCurrentPlan((prevPlan) => {
@@ -516,7 +487,6 @@ function Dashboard() {
     }, 5000);
   };
 
-  // Usage stats
   const tokensUsed = currentPlan
     ? Math.max(
         0,
@@ -552,7 +522,6 @@ function Dashboard() {
       ? Math.floor((interviewsUsed / currentPlan.interviews) * 100)
       : 0;
 
-  // Handle custom token purchase
   const handleCustomTokenPurchase = () => {
     const customPackage: TokenPackage = {
       id: "custom",
@@ -567,14 +536,8 @@ function Dashboard() {
     setPaymentModalOpen(true);
   };
 
-  // Handler for Post New Job
-  const handlePostNewJob = () => {
-    navigate("/post-job", { state: { fromDashboard: true } });
-  };
-
   return (
     <div className="min-h-screen bg-[#0f172a] text-white">
-      {/* Payment Success Notification */}
       {paymentSuccess && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50 flex items-center">
           <Check className="mr-2" size={20} />
@@ -582,7 +545,6 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Custom Token Modal */}
       {customTokenModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
@@ -596,7 +558,9 @@ function Dashboard() {
                 min="1"
                 value={customTokenAmount}
                 onChange={(e) =>
-                  setCustomTokenAmount(Math.max(1, parseInt(e.target.value) || 0))
+                  setCustomTokenAmount(
+                    Math.max(1, parseInt(e.target.value) || 0)
+                  )
                 }
                 className="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white"
               />
@@ -625,7 +589,6 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Payment Modal */}
       <PaymentModal
         isOpen={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
@@ -650,7 +613,6 @@ function Dashboard() {
         email={userEmail || ""}
       />
 
-      {/* Header */}
       <header className="flex items-center justify-between p-4 border-b border-gray-800">
         <div className="flex items-center space-x-2">
           <Zap size={24} className="text-purple-400" />
@@ -725,7 +687,6 @@ function Dashboard() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="p-6">
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
@@ -735,7 +696,6 @@ function Dashboard() {
           <>
             {currentPage === "home" && (
               <>
-                {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                   <div className="bg-purple-600 rounded-lg p-6">
                     <div className="flex justify-between items-start">
@@ -810,7 +770,6 @@ function Dashboard() {
                     </h2>
                   </div>
 
-                  {/* Current Subscription Overview */}
                   {!currentPlan ? (
                     <div className="bg-red-500 p-4 rounded-lg mb-8">
                       <p>No active subscription found for this user.</p>
@@ -883,7 +842,7 @@ function Dashboard() {
                       </div>
                     </div>
                   )}
-                  {/* Token Packages */}
+
                   <div className="bg-gray-800 rounded-lg p-6 mb-8">
                     <h3 className="text-xl font-bold mb-4">
                       Need More Tokens?
@@ -914,7 +873,6 @@ function Dashboard() {
                           </button>
                         </div>
                       ))}
-                      {/* Custom Token Package Card */}
                       <div className="bg-gradient-to-r from-purple-700 to-purple-900 p-4 rounded-lg hover:from-purple-800 hover:to-purple-950 transition-colors cursor-pointer">
                         <h4 className="font-bold mb-2">Custom Amount</h4>
                         <p className="text-2xl font-bold mb-2">You Decide</p>
@@ -932,7 +890,6 @@ function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Available Plans */}
                   <h3 className="text-2xl font-bold mb-4">
                     Available Subscription Plans
                   </h3>
@@ -1024,7 +981,6 @@ function Dashboard() {
                     ))}
                   </div>
 
-                  {/* Custom Enterprise Solutions */}
                   <div className="bg-gradient-to-r from-blue-700 to-purple-700 rounded-lg p-6">
                     <div className="flex flex-col md:flex-row justify-between items-center">
                       <div>
@@ -1049,121 +1005,149 @@ function Dashboard() {
 
             {currentPage === "interview-maker" && (
               <div className="min-h-screen bg-gray-900 text-white p-6 md:p-8">
-                {/* Header Section */}
                 <div className="rounded-lg p-6 mb-8 flex flex-col md:flex-row justify-between items-center">
                   <h1 className="text-2xl md:text-3xl font-bold text-purple-300 mb-4 md:mb-0">
                     Company Posted Jobs
                   </h1>
                   <button
-                    onClick={handlePostNewJob} // Updated to use the new handler
+                    onClick={() => navigate("/post-job")}
                     className="flex items-center gap-2 px-4 py-2 pl-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-md"
                   >
                     <PlusCircle size={20} /> Post New Job
                   </button>
                 </div>
 
-                {/* Jobs Grid */}
                 <div className="max-w-7xl mx-auto">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {jobs.length > 0 ? (
-                      jobs.map((job) => (
-                        <div
-                          key={job.job_id}
-                          className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-all duration-300 shadow-md flex flex-col h-[350px]"
-                        >
-                          {/* Job Title and Actions */}
-                          <div className="flex justify-between items-center mb-4">
-                            <div className="flex items-center">
-                              <Briefcase className="mr-2 text-purple-400" size={20} />
-                              <h2 className="text-xl font-semibold text-white">
-                                {job.title || "Untitled Job"}
-                              </h2>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              {/* Toggle Button for Active/Inactive */}
-                              <button
-                                onClick={() => handleToggleJobStatus(job.job_id)}
-                                className={`flex items-center px-3 py-1 rounded-full text-sm transition-colors ${
-                                  jobStatuses[job.job_id] === "active"
-                                    ? "bg-green-600 hover:bg-green-700"
-                                    : "bg-red-600 hover:bg-red-700"
-                                }`}
-                              >
-                                {jobStatuses[job.job_id] === "active" ? (
-                                  <>
-                                    <ToggleRight size={16} className="mr-1" /> Active
-                                  </>
-                                ) : (
-                                  <>
-                                    <ToggleLeft size={16} className="mr-1" /> Inactive
-                                  </>
-                                )}
-                              </button>
-
-                              {/* Delete Button */}
-                              <button
-                                onClick={() => handleDeleteJob(job.job_id)}
-                                className="text-red-500 hover:text-red-600 transition-colors"
-                              >
-                                <Trash size={20} />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Job Description with Fixed Height */}
-                          <p className="text-gray-300 text-sm mb-4 line-clamp-3 min-h-[60px] max-h-[60px] overflow-hidden">
-                            {job.description || "No description available."}
-                          </p>
-
-                          {/* Attributes Section - Aligned in a Single Row with Fixed Spacing */}
-                          <div className="flex gap-3 mb-4">
-                            {job.experience ? (
-                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
-                                <Briefcase size={12} className="mr-1 text-purple-400" />
-                                <span>{job.experience}</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
-                                <Briefcase size={12} className="mr-1 text-purple-400" />
-                                <span>Placeholder</span>
-                              </div>
-                            )}
-                            {job.location ? (
-                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
-                                <MapPin size={12} className="mr-1 text-purple-400" />
-                                <span>{job.location}</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
-                                <MapPin size={12} className="mr-1 text-purple-400" />
-                                <span>Placeholder</span>
-                              </div>
-                            )}
-                            {job.salary ? (
-                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
-                                <DollarSign size={12} className="mr-1 text-purple-400" />
-                                <span>{job.salary}</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
-                                <DollarSign size={12} className="mr-1 text-purple-400" />
-                                <span>Placeholder</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Spacer to Push Button to Bottom */}
-                          <div className="flex-grow"></div>
-
-                          {/* Set Interview Button */}
-                          <button
-                            onClick={() => handleApply(job)}
-                            className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition-colors font-medium"
+                      [...jobs]
+                        .sort((a, b) => {
+                          const dateA = a.posted_on
+                            ? new Date(a.posted_on).getTime()
+                            : 0;
+                          const dateB = b.posted_on
+                            ? new Date(b.posted_on).getTime()
+                            : 0;
+                          return dateB - dateA; // Latest jobs at the top
+                        })
+                        .map((job) => (
+                          <div
+                            key={job.job_id}
+                            className="bg-gray-800 rounded-lg p-6 hover:bg-gray-700 transition-all duration-300 shadow-md flex flex-col h-[350px]"
                           >
-                            Set Interview
-                          </button>
-                        </div>
-                      ))
+                            <div className="flex justify-between items-center mb-4">
+                              <div className="flex items-center">
+                                <Briefcase
+                                  className="mr-2 text-purple-400"
+                                  size={20}
+                                />
+                                <h2 className="text-xl font-semibold text-white">
+                                  {job.title || "Untitled Job"}
+                                </h2>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={() =>
+                                    handleToggleJobStatus(job.job_id)
+                                  }
+                                  className={`flex items-center px-3 py-1 rounded-full text-sm transition-colors ${
+                                    jobStatuses[job.job_id] === "active"
+                                      ? "bg-green-600 hover:bg-green-700"
+                                      : "bg-red-600 hover:bg-red-700"
+                                  }`}
+                                >
+                                  {jobStatuses[job.job_id] === "active" ? (
+                                    <>
+                                      <ToggleRight
+                                        size={16}
+                                        className="mr-1"
+                                      />{" "}
+                                      Active
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ToggleLeft size={16} className="mr-1" />{" "}
+                                      Inactive
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteJob(job.job_id)}
+                                  className="text-red-500 hover:text-red-600 transition-colors"
+                                >
+                                  <Trash size={20} />
+                                </button>
+                              </div>
+                            </div>
+
+                            <p className="text-gray-300 text-sm mb-4 line-clamp-3 min-h-[60px] max-h-[60px] overflow-hidden">
+                              {job.description || "No description available."}
+                            </p>
+
+                            <div className="flex gap-3 mb-4">
+                              {job.experience ? (
+                                <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
+                                  <Briefcase
+                                    size={12}
+                                    className="mr-1 text-purple-400"
+                                  />
+                                  <span>{job.experience}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
+                                  <Briefcase
+                                    size={12}
+                                    className="mr-1 text-purple-400"
+                                  />
+                                  <span>Placeholder</span>
+                                </div>
+                              )}
+                              {job.location ? (
+                                <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
+                                  <MapPin
+                                    size={12}
+                                    className="mr-1 text-purple-400"
+                                  />
+                                  <span>{job.location}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
+                                  <MapPin
+                                    size={12}
+                                    className="mr-1 text-purple-400"
+                                  />
+                                  <span>Placeholder</span>
+                                </div>
+                              )}
+                              {job.salary ? (
+                                <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
+                                  <DollarSign
+                                    size={12}
+                                    className="mr-1 text-purple-400"
+                                  />
+                                  <span>{job.salary}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
+                                  <DollarSign
+                                    size={12}
+                                    className="mr-1 text-purple-400"
+                                  />
+                                  <span>Placeholder</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex-grow"></div>
+
+                            <button
+                              onClick={() => handleApply(job)}
+                              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition-colors font-medium"
+                            >
+                              Set Interview
+                            </button>
+                          </div>
+                        ))
                     ) : (
                       <div className="col-span-1 sm:col-span-2 lg:col-span-3 text-center py-12 bg-gray-800 rounded-lg shadow-md">
                         <div className="mb-4">
@@ -1176,10 +1160,11 @@ function Dashboard() {
                           There are currently no jobs posted by your company.
                         </p>
                         <button
-                          onClick={handlePostNewJob} // Updated to use the new handler
+                          onClick={() => navigate("/post-job")}
                           className="bg-purple-600 hover:bg-purple-700 px-5 py-2 rounded-lg inline-flex items-center text-white font-medium"
                         >
-                          <PlusCircle size={16} className="mr-2" /> Post a New Job
+                          <PlusCircle size={16} className="mr-2" /> Post a New
+                          Job
                         </button>
                       </div>
                     )}
@@ -1191,7 +1176,6 @@ function Dashboard() {
         )}
       </main>
 
-      {/* Subscription Panel - Only visible on home page */}
       {currentPage === "home" && (
         <div
           className={`fixed bottom-0 left-0 right-0 bg-gray-800 transition-all duration-300 ${
