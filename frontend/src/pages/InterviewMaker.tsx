@@ -11,12 +11,15 @@ import {
   Building,
   Award,
   FileText,
-  CheckCircle
 } from 'lucide-react';
 import axios from 'axios';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { motion } from 'framer-motion';
 
 // NOTE: Exposing your API key in client code is not secure for production.
 const OPENAI_API_KEY = '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';
+
 type Question = {
   question: string;
   answer: string;
@@ -29,8 +32,18 @@ type PreviewSummary = {
   total_marks: number;
 };
 
+type SubscriptionPlan = {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  features: string[];
+  tokens: number;
+  interviews: number;
+  current: boolean;
+};
+
 type InterviewFormData = {
-  // Common fields
   job_id: string;
   company_id: string;
   experience: string;
@@ -39,26 +52,20 @@ type InterviewFormData = {
   manager_approval: boolean;
   compulsory: boolean;
   total_time: string;
-  // For AI Interview only:
   technical_skills: string;
   soft_skills: string;
-  num_questions: string; // how many questions to generate
-  // For both flows:
-  marks: string[]; // marks per question
-  // For Custom Interview: manually entered Q&A; for AI Interview, these will be generated
+  num_questions: string;
+  marks: string[];
   questions: Question[];
 };
 
 function InterviewMaker() {
   const location = useLocation();
   const navigate = useNavigate();
-  // Prepopulate fields from job state (if available)
   const job = location.state || {};
 
   const [interviewType, setInterviewType] = useState<'selection' | 'ai' | 'custom'>('selection');
   const [showPreview, setShowPreview] = useState(false);
-  // We'll no longer rely on previewSummary.total_time for total time,
-  // so previewSummary is used only for generated num_questions and total_marks if needed.
   const [previewSummary, setPreviewSummary] = useState<PreviewSummary | null>(null);
   const [formData, setFormData] = useState<InterviewFormData>({
     job_id: job.job_id || '',
@@ -69,21 +76,27 @@ function InterviewMaker() {
     manager_approval: false,
     compulsory: false,
     total_time: '30',
-    // AI Interview fields
     technical_skills: job.technical_skills || '',
     soft_skills: job.soft_skills || '',
     num_questions: job.num_questions || '3',
-    // Common fields
     marks: ['10'],
     questions: [{ question: '', answer: '' }],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [tokensLeft, setTokensLeft] = useState<number | null>(null);
 
-  // Calculate total marks from marks array
+  // Mock pricing data state (adjust as per your actual implementation)
+  const [pricingData, setPricingData] = useState<{
+    plans: SubscriptionPlan[];
+  }>({
+    plans: [],
+  });
+  const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
+
   const totalMarks = formData.marks.reduce((acc, cur) => acc + Number(cur), 0);
 
-  // Common field handlers
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -134,7 +147,6 @@ function InterviewMaker() {
     setInterviewType('selection');
     setShowPreview(false);
     setPreviewSummary(null);
-    // Optionally, reset the form (or keep job state values)
     setFormData({
       job_id: job.job_id || '',
       company_id: job.company_id || '',
@@ -152,7 +164,76 @@ function InterviewMaker() {
     });
   };
 
-  // For AI Interview: call OpenAI Chat API to generate questions (and summary)
+  const fetchUserSubscription = async (sessionEmail: string): Promise<number | null> => {
+    setIsLoading(true);
+    try {
+      if (!sessionEmail) {
+        console.warn("No email found in session storage for subscription fetch.");
+        setIsLoading(false);
+        return null;
+      }
+      const response = await axios.get(
+        `https://ywl2agqqd3.execute-api.us-east-1.amazonaws.com/default/fechdetails?email=${sessionEmail}`
+      );
+
+      if (
+        response.data &&
+        response.data.subscriptions &&
+        response.data.subscriptions.length > 0
+      ) {
+        const sub = response.data.subscriptions[0];
+        const matchingPlan = pricingData.plans.find(
+          (plan) => plan.name.toLowerCase() === sub.subscriptionType?.toLowerCase()
+        );
+
+        if (matchingPlan) {
+          const updatedPlan = {
+            ...matchingPlan,
+            tokens: parseInt(sub.tokensLeft) || matchingPlan.tokens,
+            current: true,
+            features: [
+              ...matchingPlan.features,
+              `Tokens Left: ${sub.tokensLeft}`,
+              `Transaction ID: ${sub.transactionId}`,
+            ],
+          };
+          setCurrentPlan(updatedPlan);
+          setPricingData((prev) => ({
+            ...prev,
+            plans: prev.plans.map((plan) => ({
+              ...plan,
+              current: plan.id === matchingPlan.id,
+            })),
+          }));
+        } else {
+          const newPlan: SubscriptionPlan = {
+            id: sub.transactionId || "current-plan",
+            name: sub.subscriptionType || "Current Plan",
+            price: 0,
+            description: "Your active subscription",
+            features: [
+              `Tokens Left: ${sub.tokensLeft}`,
+              `Tokens Purchased: ${sub.tokensPurchased}`,
+              `Transaction ID: ${sub.transactionId}`,
+            ],
+            tokens: parseInt(sub.tokensLeft) || 0,
+            interviews: 20,
+            current: true,
+          };
+          setCurrentPlan(newPlan);
+        }
+        return parseInt(sub.tokensLeft) || 0;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching user subscription details:", error);
+      setCurrentPlan(null);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   async function generateInterviewQuestions(): Promise<{ questions: Question[]; summary?: PreviewSummary }> {
     const numQuestions = Number(formData.num_questions);
     const prompt = `You are an expert interviewer.
@@ -201,7 +282,6 @@ Return only valid JSON.`;
     }
   }
 
-  // Preview step (for both AI and Custom flows)
   const handlePreview = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -209,7 +289,7 @@ Return only valid JSON.`;
       try {
         const result = await generateInterviewQuestions();
         if (result.questions.length > 0) {
-          setFormData(prev => ({ ...prev, questions: result.questions }));
+          setFormData((prev) => ({ ...prev, questions: result.questions }));
           if (result.summary) {
             setPreviewSummary(result.summary);
           }
@@ -224,8 +304,25 @@ Return only valid JSON.`;
 
   const finalSubmit = async () => {
     setIsSubmitting(true);
-  
-    // Prepare the interview submission payload (formattedData)
+
+    const sessionEmail = formData.company_id; // Adjust this based on actual email source
+
+    const tokens = await fetchUserSubscription(sessionEmail);
+
+    if (tokens === null) {
+      toast.error("Failed to fetch token balance. Please try again.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const totalTime = parseInt(formData.total_time);
+
+    if (tokens < totalTime) {
+      toast.error(`Insufficient tokens! You have ${tokens} tokens left, but the interview requires ${totalTime} tokens.`);
+      setIsSubmitting(false);
+      return;
+    }
+
     const formattedData = {
       job_id: parseInt(formData.job_id),
       company_id: formData.company_id,
@@ -233,77 +330,69 @@ Return only valid JSON.`;
       job_title: formData.job_title,
       job_description: formData.job_description,
       manager_approval: formData.manager_approval ? 1 : 0,
-      compulsary: formData.compulsory ? 1 : 0,
       compulsory: formData.compulsory ? 1 : 0,
-      marks: formData.marks.map(mark => ({ N: mark })),
-      questions: formData.questions.map(q => ({
+      marks: formData.marks.map((mark) => ({ N: mark })),
+      questions: formData.questions.map((q) => ({
         M: {
           question: { S: q.question },
-          answer: { S: q.answer }
-        }
+          answer: { S: q.answer },
+        },
       })),
-      total_time: parseInt(formData.total_time)
+      total_time: totalTime,
     };
-  
-    console.log('Submitting interview data:', formattedData);
-  
+
+    console.log("Submitting interview data:", formattedData);
+
     try {
-      // Submit the interview details
       const response = await fetch(
         "https://0x9m8akkg9.execute-api.us-east-1.amazonaws.com/qa/set_questions",
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formattedData)
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formattedData),
         }
       );
       const data = await response.json();
-      console.log('Interview submission API response:', data);
-  
-      // Prepare token deduction payload.
-      // Ensure that formData.email is populated with the user's email.
+      console.log("Interview submission API response:", data);
+
       const tokenPayload = {
-        email: formData.company_id,          // Must be set from your session or job state
-        total_time: formData.total_time // Deduct tokens equal to total interview time
+        email: sessionEmail,
+        total_time: totalTime,
       };
-  
-      // Call the token deduction API using Axios
+
       const tokenResponse = await axios.post(
         "https://3j2kgfl7ph.execute-api.us-east-1.amazonaws.com/default/tokenleft",
         tokenPayload
       );
       console.log("Tokens updated:", tokenResponse.data);
-  
+
       setIsSuccess(true);
+      toast.success("Interview submitted successfully!");
       setTimeout(() => {
         setIsSuccess(false);
         setShowPreview(false);
-        setInterviewType('selection');
+        setInterviewType("selection");
       }, 3000);
     } catch (error) {
-      console.error('Error submitting interview or updating tokens:', error);
+      console.error("Error submitting interview or updating tokens:", error);
+      toast.error("Failed to submit interview. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
-  
-  
 
-  // --- Render Section ---
-
-  // Helper component to display job details (only Company ID, Job ID, and Job Title)
   const JobDetails = () => {
     if (!job || Object.keys(job).length === 0) return null;
-    return (
-      null
-    );
+    return null;
   };
 
-  // Preview Screen (common for both flows)
   if (showPreview) {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-6">
-        <button onClick={() => setShowPreview(false)} className="flex items-center text-gray-300 hover:text-white mb-6">
+        <button
+          onClick={() => setShowPreview(false)}
+          className="flex items-center text-gray-300 hover:text-white mb-6"
+        >
           <ArrowLeft size={20} className="mr-2" /> Back to Editing
         </button>
         <h1 className="text-2xl font-bold mb-6">Preview Questions & Answers</h1>
@@ -332,9 +421,25 @@ Return only valid JSON.`;
           >
             {isSubmitting ? (
               <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 Processing...
               </>
@@ -343,39 +448,60 @@ Return only valid JSON.`;
             )}
           </button>
         </div>
+        <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} closeOnClick pauseOnHover />
       </div>
     );
   }
 
-  // Selection Screen
   if (interviewType === 'selection') {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-6">
+        <div className="flex justify-start mb-6 pt-1">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => navigate('/company-dashboard')}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Back to Dashboard
+                  </motion.button>
+                </div>
         <h1 className="text-3xl font-bold mb-8 text-center">Choose Interview Type</h1>
+        
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
-          {/* AI Interview Card */}
           <div className="bg-purple-800 rounded-lg p-8 flex flex-col items-center shadow-lg hover:shadow-xl transition-all">
             <div className="bg-purple-700 p-4 rounded-full mb-4">
               <Zap size={48} className="text-white" />
             </div>
             <h2 className="text-2xl font-bold mb-4">AI Interview</h2>
-            <p className="text-center mb-6">Let our AI generate interview questions based on job details, technical skills, and soft skills.</p>
-            <button onClick={() => setInterviewType('ai')} className="w-full bg-white text-purple-800 py-3 rounded-md font-semibold hover:bg-gray-100 transition-colors">
+            <p className="text-center mb-6">
+              Let our AI generate interview questions based on job details, technical skills, and soft skills.
+            </p>
+            <button
+              onClick={() => setInterviewType('ai')}
+              className="w-full bg-white text-purple-800 py-3 rounded-md font-semibold hover:bg-gray-100 transition-colors"
+            >
               Create AI Interview
             </button>
           </div>
-          {/* Custom Interview Card */}
           <div className="bg-blue-700 rounded-lg p-8 flex flex-col items-center shadow-lg hover:shadow-xl transition-all">
             <div className="bg-blue-600 p-4 rounded-full mb-4">
               <User size={48} className="text-white" />
             </div>
             <h2 className="text-2xl font-bold mb-4">Custom Interview</h2>
-            <p className="text-center mb-6">Manually set your interview questions, assign marks, and define total time.</p>
-            <button onClick={() => setInterviewType('custom')} className="w-full bg-white text-blue-700 py-3 rounded-md font-semibold hover:bg-gray-100 transition-colors">
+            <p className="text-center mb-6">
+              Manually set your interview questions, assign marks, and define total time.
+            </p>
+            <button
+              onClick={() => setInterviewType('custom')}
+              className="w-full bg-white text-blue-700 py-3 rounded-md font-semibold hover:bg-gray-100 transition-colors"
+            >
               Create Custom Interview
             </button>
           </div>
         </div>
+        <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} closeOnClick pauseOnHover />
       </div>
     );
   }
@@ -478,7 +604,6 @@ Return only valid JSON.`;
                 className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
               />
             </div>
-            {/* New Total Interview Time field */}
             <div>
               <label className="block text-gray-300 mb-2 flex items-center">
                 <Clock size={16} className="mr-2" /> Total Interview Time (minutes)
@@ -489,7 +614,6 @@ Return only valid JSON.`;
                 value={formData.total_time}
                 onChange={handleInputChange}
                 min="5"
-                max=" "
                 className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
                 required
               />
@@ -596,66 +720,121 @@ Return only valid JSON.`;
             </div>
           </form>
         </div>
+        <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} closeOnClick pauseOnHover />
       </div>
     );
   }
-  
-  
 
-  // Custom Interview Form – Manual Q&A entry
   if (interviewType === 'custom') {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-6">
         <button onClick={goBack} className="flex items-center text-gray-300 hover:text-white mb-6">
           <ArrowLeft size={20} className="mr-2" /> Back to selection
         </button>
-        {/* Display prepopulated job details */}
         <JobDetails />
         <div className="max-w-3xl mx-auto bg-gray-800 rounded-lg p-8 shadow-lg">
           <h1 className="text-2xl font-bold mb-6 flex items-center">
             <User size={24} className="text-blue-400 mr-2" /> Create Custom Interview
           </h1>
           <form onSubmit={handlePreview} className="space-y-6">
-            {/* Job Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <Briefcase size={16} className="mr-2" /> Job ID
                 </label>
-                <input type="number" name="job_id" value={formData.job_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.job_id} />
+                <input
+                  type="number"
+                  name="job_id"
+                  value={formData.job_id}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                  required
+                  readOnly={!!formData.job_id}
+                />
               </div>
               <div>
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <Building size={16} className="mr-2" /> Company ID
                 </label>
-                <input type="text" name="company_id" value={formData.company_id} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.company_id} />
+                <input
+                  type="text"
+                  name="company_id"
+                  value={formData.company_id}
+                  onChange={handleInputChange}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                  required
+                  readOnly={!!formData.company_id}
+                />
               </div>
             </div>
             <div>
               <label className="block text-gray-300 mb-2 flex items-center">
                 <Award size={16} className="mr-2" /> Job Title
               </label>
-              <input type="text" name="job_title" value={formData.job_title} onChange={handleInputChange} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.job_title} />
+              <input
+                type="text"
+                name="job_title"
+                value={formData.job_title}
+                onChange={handleInputChange}
+                className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                required
+                readOnly={!!formData.job_title}
+              />
             </div>
             <div>
               <label className="block text-gray-300 mb-2">Job Description</label>
-              <textarea name="job_description" value={formData.job_description} onChange={handleInputChange} rows={4} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required readOnly={!!formData.job_description}></textarea>
+              <textarea
+                name="job_description"
+                value={formData.job_description}
+                onChange={handleInputChange}
+                rows={4}
+                className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                required
+                readOnly={!!formData.job_description}
+              ></textarea>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <Clock size={16} className="mr-2" /> Total Time (minutes)
                 </label>
-                <input type="number" name="total_time" value={formData.total_time} onChange={handleInputChange} min="5" max="120" className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" required />
+                <input
+                  type="number"
+                  name="total_time"
+                  value={formData.total_time}
+                  onChange={handleInputChange}
+                  min="5"
+                  max="120"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                  required
+                />
               </div>
               <div className="flex flex-col justify-end">
                 <div className="flex items-center mb-3">
-                  <input type="checkbox" id="manager_approval" name="manager_approval" checked={formData.manager_approval} onChange={handleCheckboxChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                  <label htmlFor="manager_approval" className="ml-2 block text-gray-300">Requires Manager Approval</label>
+                  <input
+                    type="checkbox"
+                    id="manager_approval"
+                    name="manager_approval"
+                    checked={formData.manager_approval}
+                    onChange={handleCheckboxChange}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="manager_approval" className="ml-2 block text-gray-300">
+                    Requires Manager Approval
+                  </label>
                 </div>
                 <div className="flex items-center">
-                  <input type="checkbox" id="compulsory" name="compulsory" checked={formData.compulsory} onChange={handleCheckboxChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                  <label htmlFor="compulsory" className="ml-2 block text-gray-300">Compulsory Interview</label>
+                  <input
+                    type="checkbox"
+                    id="compulsory"
+                    name="compulsory"
+                    checked={formData.compulsory}
+                    onChange={handleCheckboxChange}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="compulsory" className="ml-2 block text-gray-300">
+                    Compulsory Interview
+                  </label>
                 </div>
               </div>
             </div>
@@ -663,13 +842,29 @@ Return only valid JSON.`;
               <label className="block text-gray-300 mb-2">Marks per Question</label>
               {formData.marks.map((mark, index) => (
                 <div key={index} className="flex items-center mb-2">
-                  <input type="number" value={mark} onChange={(e) => handleMarksChange(index, e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white" min="1" required />
-                  <button type="button" onClick={() => removeMarksField(index)} className="ml-2 text-red-400 hover:text-red-300" disabled={formData.marks.length <= 1}>
+                  <input
+                    type="number"
+                    value={mark}
+                    onChange={(e) => handleMarksChange(index, e.target.value)}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                    min="1"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeMarksField(index)}
+                    className="ml-2 text-red-400 hover:text-red-300"
+                    disabled={formData.marks.length <= 1}
+                  >
                     <Minus size={20} />
                   </button>
                 </div>
               ))}
-              <button type="button" onClick={addMarksField} className="flex items-center text-purple-400 hover:text-purple-300 mt-2">
+              <button
+                type="button"
+                onClick={addMarksField}
+                className="flex items-center text-purple-400 hover:text-purple-300 mt-2"
+              >
                 <Plus size={16} className="mr-1" /> Add another mark value
               </button>
               <div className="mt-2 text-sm text-gray-300">Total Marks: {totalMarks}</div>
@@ -683,31 +878,74 @@ Return only valid JSON.`;
                 <div key={index} className="mb-6 p-4 bg-gray-700 rounded-md border border-gray-600">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="font-medium text-blue-300">Question {index + 1}</h3>
-                    <button type="button" onClick={() => removeQuestionField(index)} className="text-red-400 hover:text-red-300" disabled={formData.questions.length <= 1}>
+                    <button
+                      type="button"
+                      onClick={() => removeQuestionField(index)}
+                      className="text-red-400 hover:text-red-300"
+                      disabled={formData.questions.length <= 1}
+                    >
                       <Minus size={18} />
                     </button>
                   </div>
                   <div className="mb-3">
                     <label className="block text-gray-300 mb-1 text-sm">Question Text</label>
-                    <textarea value={q.question} onChange={(e) => handleQuestionChange(index, 'question', e.target.value)} rows={2} className="w-full bg-gray-800 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" required></textarea>
+                    <textarea
+                      value={q.question}
+                      onChange={(e) => handleQuestionChange(index, 'question', e.target.value)}
+                      rows={2}
+                      className="w-full bg-gray-800 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    ></textarea>
                   </div>
                   <div>
                     <label className="block text-gray-300 mb-1 text-sm">Expected Answer</label>
-                    <textarea value={q.answer} onChange={(e) => handleQuestionChange(index, 'answer', e.target.value)} rows={3} className="w-full bg-gray-800 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" required></textarea>
+                    <textarea
+                      value={q.answer}
+                      onChange={(e) => handleQuestionChange(index, 'answer', e.target.value)}
+                      rows={3}
+                      className="w-full bg-gray-800 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    ></textarea>
                   </div>
                 </div>
               ))}
-              <button type="button" onClick={addQuestionField} className="flex items-center text-blue-400 hover:text-blue-300 mt-2">
+              <button
+                type="button"
+                onClick={addQuestionField}
+                className="flex items-center text-blue-400 hover:text-blue-300 mt-2"
+              >
                 <Plus size={16} className="mr-1" /> Add another question
               </button>
             </div>
             <div className="flex justify-end">
-              <button type="submit" disabled={isSubmitting} className={`bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md font-medium flex items-center ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md font-medium flex items-center ${
+                  isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
+                }`}
+              >
                 {isSubmitting ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Processing...
                   </>
@@ -718,6 +956,7 @@ Return only valid JSON.`;
             </div>
           </form>
         </div>
+        <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} closeOnClick pauseOnHover />
       </div>
     );
   }

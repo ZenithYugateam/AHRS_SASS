@@ -20,16 +20,17 @@ function PostJob() {
     privateJob: false,
     collegeNames: '',
   });
+  const [showToast, setShowToast] = useState(false); // Added toast state
 
   useEffect(() => {
     // Retrieve logged in user's data from sessionStorage
     const storedUser = sessionStorage.getItem('user');
     const sessionEmail = storedUser ? JSON.parse(storedUser).email : 'default@example.com';
-    const sessionDisplayName = storedUser ? JSON.parse(storedUser).username : 'No Display Name';  // Retrieve displayName directly from sessionStorage
-    const randomJobId = Math.floor(Math.random() * 1000000); // generate random job id
+    const sessionDisplayName = storedUser ? JSON.parse(storedUser).username : 'No Display Name';
+    const randomJobId = Math.floor(Math.random() * 1000000);
     if (storedUser) {
       const userData = JSON.parse(storedUser);
-      console.log('User Data:', userData);  // Print user data to the console
+      console.log('User Data:', userData);
     } else {
       console.log('No user data found in sessionStorage');
     }
@@ -37,7 +38,7 @@ function PostJob() {
       ...prevData,
       companyId: sessionEmail,
       jobId: randomJobId,
-      displayName: sessionDisplayName,  // Set displayName from sessionStorage
+      displayName: sessionDisplayName,
     }));
   }, []);
 
@@ -49,8 +50,21 @@ function PostJob() {
     }));
   };
 
+  // Added validation function
+  const validateForm = () => {
+    const requiredFields = ['title', 'description', 'salary', 'location'];
+    return requiredFields.every(field => formData[field].trim() !== '');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Added validation check
+    if (!validateForm()) {
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
 
     try {
       const response = await fetch('https://y0nraqyq18.execute-api.us-east-1.amazonaws.com/default/post_job', {
@@ -65,8 +79,7 @@ function PostJob() {
       const result = await response.json();
       if (response.ok) {
         alert('Job posted successfully!');
-        // Navigate to the Interview Maker page after the job is posted
-        navigate('/company-dashboard#');  // Change this to the actual Interview Maker page route
+        navigate('/company-dashboard#');
       } else {
         alert('Error posting job');
       }
@@ -81,6 +94,14 @@ function PostJob() {
         <h1 className="text-4xl font-bold mb-8 drop-shadow-[0_0_8px_rgba(128,0,128,0.8)]">
           Company Posted Jobs
         </h1>
+        {/* Added Toast Notification */}
+        {showToast && (
+          <div className="fixed top-4 right-4 z-50 animate-fade-in">
+            <div className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg">
+              Please enter all required details (Job Title, Description, Salary, and Location)
+            </div>
+          </div>
+        )}
         {/* Post New Job Button */}
         <div className="flex justify-end mb-8">
           <button
@@ -149,24 +170,26 @@ function PostJob() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Job Title</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Job Title *</label>
               <input
                 type="text"
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
                 className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Job Description</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Job Description *</label>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
                 className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
               />
             </div>
 
@@ -205,25 +228,27 @@ function PostJob() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Salary</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Salary *</label>
                 <input
                   type="text"
                   name="salary"
                   value={formData.salary}
                   onChange={handleChange}
                   className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Location</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Location *</label>
               <input
                 type="text"
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
                 className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
               />
             </div>
 
