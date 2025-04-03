@@ -674,9 +674,6 @@ function Dashboard() {
             Manage Subscription
           </button>
           <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
-              <span className="font-bold">Z</span>
-            </div>
             <button
               className="px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
               onClick={handleLogout}
