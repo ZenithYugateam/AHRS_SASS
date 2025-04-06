@@ -19,6 +19,7 @@ import { ToastContainer } from 'react-toastify';
 //
 import CandidateAnalysisPage from './pages/CandidateAnalysisPage';
 import Companyprofile from './components/Companyprofile/Companyprofile';
+import Candidatedashboard from './components/Candidatedashboard/Candidatedashboard';
 
 
 function App() {
@@ -44,6 +45,7 @@ function App() {
         <Route path="/Companyprofile" element={<Companyprofile/>}/>;
         <Route path="/analysis/:candidateId" element={<CandidateAnalysisPage />} />
         <Route path="/jobdesc" element={<Jobdesc />} />
+        <Route path="/candidatedashboard" element={<Candidatedashboard />} />
         
       </Routes>
     </Router>
