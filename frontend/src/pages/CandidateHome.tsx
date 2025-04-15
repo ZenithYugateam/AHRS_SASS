@@ -7,18 +7,17 @@ import { ChevronDown, User, Briefcase, MapPin, DollarSign } from 'lucide-react';
 interface Job {
   job_id: string;
   title: string;
-  description?: string;      
-  display_name?:string;
+  description?: string;
   experience?: string;
   location?: string;
+  display_name?:string;
   salary?: string;
   company_id: string;
   posted_on?: string;
   job_posted?: string;
   approval?: boolean;
-  private_job?: boolean;
+  private_job?:boolean;
   college_names?: string;
-  status?: string;
 }
 
 function CandidateHome() {
@@ -34,16 +33,16 @@ function CandidateHome() {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [myCollegePost, setMyCollegePost] = useState(false);
 
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [sortByNewest, setSortByNewest] = useState(false);
-  const [selectedTags, setSelectedTags] = useState<string[]>(["ALL"]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const navigate = useNavigate();
 
   const availableStacks = [
-    "ALL",
     "AI", "ML", "MERN Stack", "Full Stack", "Backend", "Frontend",
     "DevOps", "Data Science", "Cybersecurity", "Mobile Dev"
   ];
@@ -71,11 +70,8 @@ function CandidateHome() {
           { timeout: 5000, headers: { "Content-Type": "application/json" } }
         );
         if (response.data && response.data.data) {
-          const filteredData = response.data.data.filter(
-            (job: Job) => !job.status
-          );
-          setJobData(filteredData);
-          setFilteredJobs(filteredData);
+          setJobData(response.data.data);
+          setFilteredJobs(response.data.data);
         } else {
           setError("No job data found");
         }
@@ -97,57 +93,56 @@ function CandidateHome() {
 
   useEffect(() => {
     let filtered = [...jobData];
-    
-    // When ALL is selected, show all jobs and only apply sorting if enabled
-    if (selectedTags.includes("ALL")) {
-      if (sortByNewest) {
-        filtered.sort((a, b) => {
-          const dateA = new Date(a.posted_on || a.job_posted || Date.now()).getTime();
-          const dateB = new Date(b.posted_on || b.job_posted || Date.now()).getTime();
-          return dateB - dateA;
-        });
-      }
-    } else {
-      // Apply all filters when ALL is not selected
-      if (searchQuery) {
-        filtered = filtered.filter((job) =>
-          job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      }
-      if (selectedLocation) {
-        filtered = filtered.filter((job) =>
-          job.location?.toLowerCase().includes(selectedLocation.toLowerCase())
-        );
-      }
-      if (selectedTags.length > 0) {
-        filtered = filtered.filter((job) =>
-          selectedTags.some((tag) =>
-            job.title?.toLowerCase().includes(tag.toLowerCase()) ||
-            job.description?.toLowerCase().includes(tag.toLowerCase())
-          )
-        );
-      }
-      if (myCollegePost) {
-        const storedUser = sessionStorage.getItem("user");
-        const userData = storedUser ? JSON.parse(storedUser) : null;
-        const candidateCollege = userData ? userData.selectedCollege : "";
-        filtered = filtered.filter(
-          (job) => job.private_job === true && job.college_names?.includes(candidateCollege)
-        );
-      }
-      if (sortByNewest) {
-        filtered.sort((a, b) => {
-          const dateA = new Date(a.posted_on || a.job_posted || Date.now()).getTime();
-          const dateB = new Date(b.posted_on || b.job_posted || Date.now()).getTime();
-          return dateB - dateA;
-        });
-      }
+  
+    // Get the selected college from sessionStorage
+    const storedUserData = sessionStorage.getItem("user");
+    const selectedCollege = storedUserData ? JSON.parse(storedUserData).selectedCollege : "";
+  
+    // Filter jobs by search query
+    if (searchQuery) {
+      filtered = filtered.filter((job) =>
+        job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
-
+  
+    // Filter jobs by location
+    if (selectedLocation) {
+      filtered = filtered.filter((job) =>
+        job.location?.toLowerCase().includes(selectedLocation.toLowerCase())
+      );
+    }
+  
+    // Filter jobs by tags
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((job) =>
+        selectedTags.some((tag) =>
+          job.title?.toLowerCase().includes(tag.toLowerCase()) ||
+          job.description?.toLowerCase().includes(tag.toLowerCase())
+        )
+      );
+    }
+  
+    // Sort jobs by newest if enabled
+    if (sortByNewest) {
+      filtered.sort((a, b) => {
+        const dateA = new Date(a.posted_on || a.job_posted || Date.now()).getTime();
+        const dateB = new Date(b.posted_on || b.job_posted || Date.now()).getTime();
+        return dateB - dateA;
+      });
+    }
+  
+    // Apply "My College Posts Only" filter dynamically
+    if (myCollegePost && selectedCollege) {
+      filtered = filtered.filter((job) =>
+        job.private_job === true && job.college_names?.includes(selectedCollege)
+      );
+    }
+  
     setFilteredJobs(filtered);
-
+  
+    // Preference-based filtering for "filteredPreferenceMatches"
     let prefMatches = jobData.filter((job) => {
       if (!jobPreferences || jobPreferences.length === 0) return false;
       return jobPreferences.some((pref) => {
@@ -158,39 +153,39 @@ function CandidateHome() {
         );
       });
     });
-
-    // Similar logic for preference matches
-    if (!selectedTags.includes("ALL")) {
-      if (searchQuery) {
-        prefMatches = prefMatches.filter((job) =>
-          job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          job.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      }
-      if (selectedLocation) {
-        prefMatches = prefMatches.filter((job) =>
-          job.location?.toLowerCase().includes(selectedLocation.toLowerCase())
-        );
-      }
-      if (selectedTags.length > 0) {
-        prefMatches = prefMatches.filter((job) =>
-          selectedTags.some((tag) =>
-            job.title?.toLowerCase().includes(tag.toLowerCase()) ||
-            job.description?.toLowerCase().includes(tag.toLowerCase())
-          )
-        );
-      }
-      if (myCollegePost) {
-        const storedUser = sessionStorage.getItem("user");
-        const userData = storedUser ? JSON.parse(storedUser) : null;
-        const candidateCollege = userData ? userData.selectedCollege : "";
-        prefMatches = prefMatches.filter(
-          (job) => job.private_job === true && job.college_names?.includes(candidateCollege)
-        );
-      }
+  
+    // Apply the same filters to "prefMatches"
+    if (searchQuery) {
+      prefMatches = prefMatches.filter((job) =>
+        job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
-    
+  
+    if (selectedLocation) {
+      prefMatches = prefMatches.filter((job) =>
+        job.location?.toLowerCase().includes(selectedLocation.toLowerCase())
+      );
+    }
+  
+    if (selectedTags.length > 0) {
+      prefMatches = prefMatches.filter((job) =>
+        selectedTags.some((tag) =>
+          job.title?.toLowerCase().includes(tag.toLowerCase()) ||
+          job.description?.toLowerCase().includes(tag.toLowerCase())
+        )
+      );
+    }
+  
+    // Apply the same college-based filtering for preference matches
+    if (myCollegePost && selectedCollege) {
+      prefMatches = prefMatches.filter((job) =>
+        job.private_job === true && job.college_names?.includes(selectedCollege)
+      );
+    }
+  
+    // Apply sorting for preferences
     if (sortByNewest) {
       prefMatches.sort((a, b) => {
         const dateA = new Date(a.posted_on || a.job_posted || Date.now()).getTime();
@@ -198,29 +193,36 @@ function CandidateHome() {
         return dateB - dateA;
       });
     }
-
+  
     setFilteredPreferenceMatches(prefMatches);
+  
   }, [searchQuery, selectedLocation, selectedTags, sortByNewest, jobData, jobPreferences, myCollegePost]);
-
+  
+  
   const renderJobCard = (job: Job, index: number) => (
     <motion.div
       key={index}
       onClick={() => handleJobClick(job)}
       className="w-[300px] h-[300px] bg-[#1E1A2B] rounded-2xl p-5 shadow-inner 
                  hover:shadow-[0_0_15px_rgba(247,0,252,0.5)] transition-all duration-300 
-                 cursor-pointer relative overflow-hidden"
+                 cursor-pointer relative overflow-hidden" // Added overflow-hidden to contain content
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ scale: 1.02, y: -5 }}
       transition={{ duration: 0.5, delay: index * 0.1, type: "spring" }}
     >
+      {/* Gradient Line at the Top */}
       <div className="h-2 w-full bg-gradient-to-r from-[#F700FC] to-[#2941B9] rounded-t-lg absolute top-0 left-0" />
+
+      {/* Status Badge at Top-Right */}
       <div className="absolute top-4 right-4">
         <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-medium text-white
                           ${job.approval ? "bg-green-500/80" : "bg-yellow-500/80"}`}>
           {job.approval ? "Eligible" : "Pending"}
         </span>
       </div>
+
+      {/* Header Content with Reduced Spacing */}
       <div className="mt-6">
         <motion.h3
           className="text-xl font-bold text-white line-clamp-2"
@@ -237,7 +239,9 @@ function CandidateHome() {
           {new Date(job.posted_on || job.job_posted || Date.now()).toDateString()}
         </p>
       </div>
-      <div className="mt-3 flex flex-col gap-1 text-base text-[#B0B0B0]">
+
+      {/* Body */}
+      <div className="mt-3 flex flex-col gap-1 text-base text-[#B0B0B0]"> {/* Reduced mt-4 to mt-3 and gap-2 to gap-1 */}
         <div className="flex items-center gap-2">
           <Briefcase className="h-4 w-4 text-[#F700FC]" />
           <span className="line-clamp-1">{job.experience || "N/A"}</span>
@@ -250,10 +254,10 @@ function CandidateHome() {
           <DollarSign className="h-4 w-4 text-[#F700FC]" />
           <span className="text-white relative line-clamp-1">
             {job.salary || "N/A"}
-            <div className="absolute -bottom-1 left-0 w-full h-1.5 bg-[#F700FC] rounded opacity-80" />
+            <div className="absolute -bottom-1 left-0 w-full h-1.5 bg-[#F700FC] rounded opacity-80" /> {/* Made underline thicker and more visible */}
           </span>
         </div>
-        <p className="text-[14px] text-gray-400 line-clamp-1 mt-1">
+        <p className="text-[14px] text-gray-400 line-clamp-1 mt-1"> {/* Reduced to line-clamp-1 */}
           {job.description || "N/A"}
         </p>
       </div>
@@ -282,7 +286,6 @@ function CandidateHome() {
     sessionStorage.removeItem("user");
     navigate("/");
   };
-  
   const toggleJobsDropdown = () => setIsJobsDropdownOpen((prev) => !prev);
   const toggleProfileDropdown = () => setIsProfileDropdownOpen((prev) => !prev);
 
@@ -330,17 +333,16 @@ function CandidateHome() {
               )}
             </div>
             <div className="relative">
-              <button
-                className="flex items-center space-x-2"
-                onClick={() => {
-                  navigate("/profile");
-                  setIsProfileDropdownOpen(false);
-                }}
-              >
+              <button className="flex items-center space-x-2"   onClick={() => {
+                      navigate("/profile");
+                      setIsProfileDropdownOpen(false);
+                    }}>
                 <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
                   <User className="h-6 w-6 text-[#1A1528]" />
                 </div>
-                <span className="text-white">{username}</span>
+                <span className="text-white">
+                  {username} 
+                </span>
               </button>
             </div>
             <button
@@ -372,15 +374,15 @@ function CandidateHome() {
                          focus:outline-none focus:ring-2 focus:ring-[#F700FC]"
             />
             <div className="flex flex-wrap gap-4">
-              <label className="flex items-center text-white">
-                <input
-                  type="checkbox"
-                  checked={myCollegePost}
-                  onChange={() => setMyCollegePost((prev) => !prev)}
-                  className="mr-2"
-                />
-                My College Posts Only
-              </label>
+            <label className="flex items-center text-white">
+    <input
+      type="checkbox"
+      checked={myCollegePost}
+      onChange={() => setMyCollegePost((prev) => !prev)}
+      className="mr-2"
+    />
+    My College Posts Only
+  </label>
               <select
                 value={selectedLocation}
                 onChange={(e) => setSelectedLocation(e.target.value)}
@@ -405,18 +407,9 @@ function CandidateHome() {
                   <button
                     key={tag}
                     onClick={() => {
-                      setSelectedTags((prev) => {
-                        if (tag === "ALL") {
-                          return ["ALL"];
-                        }
-                        if (prev.includes("ALL")) {
-                          return [tag];
-                        }
-                        if (prev.includes(tag)) {
-                          return prev.filter((t) => t !== tag);
-                        }
-                        return [...prev, tag];
-                      });
+                      setSelectedTags((prev) =>
+                        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                      );
                     }}
                     className={`px-3 py-1 rounded-full text-sm text-white 
                                ${selectedTags.includes(tag) ? "bg-[#F700FC]" : "bg-[#2A2538]"} 
