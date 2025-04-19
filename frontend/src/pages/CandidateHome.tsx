@@ -154,7 +154,7 @@ function CandidateHome() {
       });
     });
   
-    // Apply the same filters to "prefMatche"
+    // Apply the same filters to "prefMatches"
     if (searchQuery) {
       prefMatches = prefMatches.filter((job) =>
         job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
