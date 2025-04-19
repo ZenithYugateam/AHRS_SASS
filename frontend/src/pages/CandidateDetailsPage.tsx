@@ -9,11 +9,13 @@ import 'react-toastify/dist/ReactToastify.css';
 interface CandidateRow {
   candidateId: string;
   jobId: number;
-  status: number;
+  aiStatus: number; // AI-generated status from get_total_interview
+  manualStatus?: number; // Manually updated status from getnightstatus
   title: string;
   postedOn: string;
   managerMessage?: string;
   updated?: boolean;
+  timestamp?: string;
 }
 
 const CandidateDetailsPage: React.FC = () => {
@@ -54,7 +56,7 @@ const CandidateDetailsPage: React.FC = () => {
               candidateRows.push({
                 candidateId: candidate.candidateId,
                 jobId: job.job_id,
-                status: candidate.status,
+                aiStatus: candidate.status,
                 title: job.title || 'N/A',
                 postedOn: job.posted_on || 'N/A',
               });
@@ -62,7 +64,6 @@ const CandidateDetailsPage: React.FC = () => {
           }
         });
         setCandidates(candidateRows);
-        // Fetch updated status for each candidate dynamically
         fetchUpdatedCandidates(candidateRows);
       })
       .catch((error) => {
@@ -73,19 +74,29 @@ const CandidateDetailsPage: React.FC = () => {
       });
   }, [companyId]);
 
-  // Function to fetch updated candidates dynamically using candidateId and jobId
+  // Function to fetch updated candidates with retry logic
+  const fetchWithRetry = async (url: string, retries: number = 3, delay: number = 1000) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await axios.get(url);
+        return response;
+      } catch (error) {
+        if (i === retries - 1) throw error;
+        await new Promise((resolve) => setTimeout(resolve, delay * (i + 1)));
+      }
+    }
+  };
+
   const fetchUpdatedCandidates = async (candidateRows: CandidateRow[]) => {
     const updatedCandidatesPromises = candidateRows.map((candidate) =>
-      axios
-        .get(
-          `https://ho5dvgc5u2.execute-api.us-east-1.amazonaws.com/default/getnightstatus?candidateId=${candidate.candidateId}&jobId=${candidate.jobId}`
-        )
+      fetchWithRetry(
+        `https://ho5dvgc5u2.execute-api.us-east-1.amazonaws.com/default/getnightstatus?candidateId=${candidate.candidateId}&jobId=${candidate.jobId}`
+      )
         .then((response) => {
-          // Assuming the API returns an array of items in response.data.data
           const updatedData = response.data.data || [];
           return updatedData.map((item: any) => ({
             ...candidate,
-            status: item.status,
+            manualStatus: item.status,
             managerMessage: item.managerMessage,
             updated: true,
             timestamp: item.timestamp,
@@ -93,7 +104,7 @@ const CandidateDetailsPage: React.FC = () => {
         })
         .catch((error) => {
           console.error(`Error fetching status for ${candidate.candidateId}-${candidate.jobId}:`, error);
-          return [{ ...candidate, updated: false }]; // Return original candidate if fetch fails
+          return [{ ...candidate, updated: false }];
         })
     );
 
@@ -103,11 +114,15 @@ const CandidateDetailsPage: React.FC = () => {
       setUpdatedCandidates(flattenedResults.filter((c) => c.updated));
       setCandidates((prev) =>
         prev.filter(
-          (c) => !flattenedResults.some((u) => u.candidateId === c.candidateId && u.jobId === c.jobId && u.updated)
+          (c) =>
+            !flattenedResults.some(
+              (u) => u.candidateId === c.candidateId && u.jobId === c.jobId && u.updated
+            )
         )
       );
     } catch (error) {
       console.error('Error processing updated candidates:', error);
+      setUpdatedCandidates([]);
     }
   };
 
@@ -120,7 +135,9 @@ const CandidateDetailsPage: React.FC = () => {
       candidate.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       candidate.jobId.toString().includes(searchTerm)) &&
     (filterStatus === 'all' ||
-      (filterStatus === 'selected' ? candidate.status === 10 : candidate.status !== 10))
+      (filterStatus === 'selected'
+        ? (candidate.manualStatus ?? candidate.aiStatus) === 10
+        : (candidate.manualStatus ?? candidate.aiStatus) !== 10))
   );
 
   // Sort the filtered candidates
@@ -142,12 +159,16 @@ const CandidateDetailsPage: React.FC = () => {
       .then(() => {
         setCandidates((prev) =>
           prev.filter(
-            (c) =>
-              !(c.candidateId === candidate.candidateId && c.jobId === candidate.jobId)
+            (c) => !(c.candidateId === candidate.candidateId && c.jobId === c.jobId)
           )
         );
-        toast.success(`Candidate ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
-        fetchUpdatedCandidates(candidates); // Refresh updated candidates
+        fetchUpdatedCandidates([
+          ...candidates.filter(
+            (c) => !(c.candidateId === candidate.candidateId && c.jobId === c.jobId)
+          ),
+        ]).then(() => {
+          toast.success(`Candidate ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
+        });
       })
       .catch((error) => {
         console.error('Error updating candidate status:', error);
@@ -169,6 +190,20 @@ const CandidateDetailsPage: React.FC = () => {
       ))}
     </>
   );
+
+  // Helper function to render status
+  const renderStatus = (status: number | undefined, label: string) => {
+    if (status === undefined) return null;
+    return (
+      <span
+        className={`inline-block px-3 py-1 rounded-full text-sm ${
+          status === 10 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+        }`}
+      >
+        {label}: {status === 10 ? 'Selected' : 'Rejected'}
+      </span>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
@@ -207,6 +242,8 @@ const CandidateDetailsPage: React.FC = () => {
         </div>
         {isLoading ? (
           <LoadingSkeleton />
+        ) : updatedCandidates.length === 0 && candidates.length === 0 ? (
+          <div className="text-center text-gray-400">Failed to load candidate updates. Please try again later.</div>
         ) : (
           <div className="bg-[#12121a] rounded-lg overflow-hidden">
             <div className="grid grid-cols-5 gap-4 p-4 bg-[#1a1a23] text-purple-400 font-semibold">
@@ -232,18 +269,11 @@ const CandidateDetailsPage: React.FC = () => {
                       {candidate.jobId}
                     </Link>
                   </div>
-                  <div>
-                    {candidate.status === 10 ? (
-                      <span className="inline-block px-3bund py-1 rounded-full text-sm bg-green-500/20 text-green-400">
-                        Selected
-                      </span>
-                    ) : (
-                      <span className="inline-block px-3 py-1 rounded-full text-sm bg-red-500/20 text-red-400">
-                        Rejected
-                      </span>
-                    )}
+                  <div className="flex flex-col gap-2">
+                    {renderStatus(candidate.aiStatus, 'AI')}
+                    {renderStatus(candidate.manualStatus, 'Manual')}
                     {candidate.managerMessage && (
-                      <div className="text-xs text-gray-400 mt-1">{candidate.managerMessage}</div>
+                      <div className="text-xs text-gray-400 mt-1">Message: {candidate.managerMessage}</div>
                     )}
                   </div>
                   <div className="text-gray-300">
