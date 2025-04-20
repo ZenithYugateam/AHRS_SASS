@@ -89,7 +89,7 @@ function InterviewScreen() {
 
   const { transcript, listening, resetTranscript, browserSupportsSpeechRecognition } = useSpeechRecognition();
 
-  const OPENAI_API_KEY = "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";
+  const OPENAI_API_KEY = "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";
   const STORE_INTERVIEW_ENDPOINT = "https://vbajfgmatb.execute-api.us-east-1.amazonaws.com/prod/storeInterview";
   const CANDIDATE_STATUS_ENDPOINT = "https://l1i2uu3p32.execute-api.us-east-1.amazonaws.com/default/post_candidate_status";
   const PRESIGNED_URL_ENDPOINT = "https://071h9ufh65.execute-api.us-east-1.amazonaws.com/singedurl";

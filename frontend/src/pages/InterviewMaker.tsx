@@ -18,7 +18,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { motion } from 'framer-motion';
 
 // NOTE: Exposing your API key in client code is not secure for production.
-const OPENAI_API_KEY = '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';
+const OPENAI_API_KEY = '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';
 
 type Question = {
   question: string;
