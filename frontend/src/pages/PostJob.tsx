@@ -9,6 +9,7 @@ function PostJob() {
     jobId: '',
     displayName: '',
     postedOn: '',
+    expiresOn: '',
     title: '',
     description: '',
     experience: '',
@@ -20,10 +21,9 @@ function PostJob() {
     privateJob: false,
     collegeNames: '',
   });
-  const [showToast, setShowToast] = useState(false); // Added toast state
+  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
-    // Retrieve logged in user's data from sessionStorage
     const storedUser = sessionStorage.getItem('user');
     const sessionEmail = storedUser ? JSON.parse(storedUser).email : 'default@example.com';
     const sessionDisplayName = storedUser ? JSON.parse(storedUser).username : 'No Display Name';
@@ -50,7 +50,6 @@ function PostJob() {
     }));
   };
 
-  // Added validation function
   const validateForm = () => {
     const requiredFields = ['title', 'description', 'salary', 'location'];
     return requiredFields.every(field => formData[field].trim() !== '');
@@ -59,7 +58,6 @@ function PostJob() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Added validation check
     if (!validateForm()) {
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
@@ -94,7 +92,6 @@ function PostJob() {
         <h1 className="text-4xl font-bold mb-8 drop-shadow-[0_0_8px_rgba(128,0,128,0.8)]">
           Company Posted Jobs
         </h1>
-        {/* Added Toast Notification */}
         {showToast && (
           <div className="fixed top-4 right-4 z-50 animate-fade-in">
             <div className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg">
@@ -102,7 +99,6 @@ function PostJob() {
             </div>
           </div>
         )}
-        {/* Post New Job Button */}
         <div className="flex justify-end mb-8">
           <button
             onClick={() => navigate('/post-job')}
@@ -130,9 +126,8 @@ function PostJob() {
                   type="text"
                   name="companyId"
                   value={formData.companyId}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   readOnly
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
                 />
               </div>
               <div>
@@ -141,9 +136,8 @@ function PostJob() {
                   type="text"
                   name="jobId"
                   value={formData.jobId}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   readOnly
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
                 />
               </div>
               <div>
@@ -152,21 +146,33 @@ function PostJob() {
                   type="text"
                   name="displayName"
                   value={formData.displayName}
-                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   readOnly
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Posted On</label>
-              <input
-                type="date"
-                name="postedOn"
-                value={formData.postedOn}
-                onChange={handleChange}
-                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Posted On</label>
+                <input
+                  type="date"
+                  name="postedOn"
+                  value={formData.postedOn}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Expires On</label>
+                <input
+                  type="date"
+                  name="expiresOn"
+                  value={formData.expiresOn}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
+                />
+              </div>
             </div>
 
             <div>
@@ -176,8 +182,8 @@ function PostJob() {
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 required
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
               />
             </div>
 
@@ -188,12 +194,11 @@ function PostJob() {
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
-                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 required
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
               />
             </div>
 
-            {/* New Fields for Key Responsibilities and Benefits */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Key Responsibilities</label>
               <textarea
@@ -201,7 +206,7 @@ function PostJob() {
                 value={formData.keyResponsibilities}
                 onChange={handleChange}
                 rows={4}
-                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
               />
             </div>
 
@@ -212,7 +217,7 @@ function PostJob() {
                 value={formData.benefits}
                 onChange={handleChange}
                 rows={4}
-                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
               />
             </div>
 
@@ -224,7 +229,7 @@ function PostJob() {
                   name="experience"
                   value={formData.experience}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
                 />
               </div>
               <div>
@@ -234,8 +239,8 @@ function PostJob() {
                   name="salary"
                   value={formData.salary}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   required
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
                 />
               </div>
             </div>
@@ -247,8 +252,8 @@ function PostJob() {
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 required
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
               />
             </div>
 
