@@ -862,79 +862,85 @@ function Dashboard() {
 
                   <h3 className="text-2xl font-bold mb-4">Available Subscription Plans</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                    {pricingData.plans.map((plan) => (
-                      <div
-                        key={plan.id}
-                        className={`${
-                          plan.current
-                            ? "bg-gradient-to-b from-purple-700 to-purple-900"
-                            : "bg-gray-800"
-                        } rounded-lg overflow-hidden relative`}
-                      >
-                        {plan.current && (
-                          <div className="absolute top-0 right-0 bg-purple-500 text-white text-xs px-3 py-1">
-                            CURRENT
-                          </div>
-                        )}
-                        <div className="p-6">
-                          <h4 className="text-xl font-bold mb-2">{plan.name}</h4>
-                          <p className="text-3xl font-bold mb-4">
-                            ${plan.price}
-                            <span className="text-sm font-normal">/month</span>
-                          </p>
-                          <p
-                            className={`text-sm ${
-                              plan.current ? "text-purple-200" : "text-gray-300"
-                            } mb-6`}
-                          >
-                            {plan.description}
-                          </p>
-                          <ul className="space-y-3 mb-6">
-                            {plan.features.map((feature, index) => {
-                              const isIncluded =
-                                !feature.includes("API access") || plan.id === "enterprise";
-                              return (
-                                <li key={index} className="flex items-start">
-                                  {isIncluded ? (
-                                    <Check
-                                      size={18}
-                                      className="text-green-400 mr-2 mt-0.5"
-                                    />
-                                  ) : (
-                                    <X size={18} className="text-red-400 mr-2 mt-0.5" />
-                                  )}
-                                  <span className={!isIncluded ? "text-gray-400" : ""}>
-                                    {feature}
-                                  </span>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                        <div className="px-6 pb-6">
-                          {plan.current ? (
-                            <button
-                              className="w-full bg-white text-purple-700 hover:bg-gray-100 py-3 rounded text-sm font-medium flex items-center justify-center"
-                              onClick={() => handleSelectPlan(plan)}
-                            >
-                              <RefreshCw size={16} className="mr-2" />
-                              Renew Plan
-                            </button>
-                          ) : (
-                            <button
-                              className={`w-full ${
-                                plan.id === "enterprise"
-                                  ? "bg-purple-600 hover:bg-purple-700"
-                                  : "bg-gray-700 hover:bg-gray-600"
-                              } py-3 rounded text-sm font-medium`}
-                              onClick={() => handleSelectPlan(plan)}
-                            >
-                              {plan.id === "enterprise" ? "Upgrade" : "Choose Plan"}
-                            </button>
+                    {[...pricingData.plans]
+                      .sort((a, b) => (b.current ? 1 : -1)) // Sort to place the current plan first
+                      .map((plan) => (
+                        <div
+                          key={plan.id}
+                          className={`${
+                            plan.current
+                              ? "bg-gradient-to-b from-purple-500 to-purple-700" // Highlight color changed to purple
+                              : "bg-gray-800"
+                          } rounded-lg overflow-hidden relative shadow-lg`} // Added shadow for better highlighting
+                        >
+                          {plan.current && (
+                            <div className="absolute top-0 right-0 bg-purple-400 text-white text-xs px-3 py-1">
+                              CURRENT
+                            </div>
                           )}
+                          <div className="p-6">
+                            <h4 className="text-xl font-bold mb-2">{plan.name}</h4>
+                            <p className="text-3xl font-bold mb-4">
+                              ${plan.price}
+                              <span className="text-sm font-normal">/month</span>
+                            </p>
+                            <p
+                              className={`text-sm ${
+                                plan.current ? "text-purple-100" : "text-gray-300"
+                              } mb-6`}
+                            >
+                              {plan.description}
+                            </p>
+                            <ul className="space-y-3 mb-6">
+                              {plan.features.map((feature, index) => {
+                                const isIncluded =
+                                  !feature.includes("API access") || plan.id === "enterprise";
+                                return (
+                                  <li key={index} className="flex items-start">
+                                    {isIncluded ? (
+                                      <Check
+                                        size={18}
+                                        className={
+                                          plan.current
+                                            ? "text-purple-200 mr-2 mt-0.5"
+                                            : "text-green-400 mr-2 mt-0.5"
+                                        }
+                                      />
+                                    ) : (
+                                      <X size={18} className="text-red-400 mr-2 mt-0.5" />
+                                    )}
+                                    <span className={!isIncluded ? "text-gray-400" : ""}>
+                                      {feature}
+                                    </span>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                          <div className="px-6 pb-6">
+                            {plan.current ? (
+                              <button
+                                className="w-full bg-white text-purple-600 hover:bg-gray-100 py-3 rounded text-sm font-medium flex items-center justify-center"
+                                onClick={() => handleSelectPlan(plan)}
+                              >
+                                <RefreshCw size={16} className="mr-2" />
+                                Renew Plan
+                              </button>
+                            ) : (
+                              <button
+                                className={`w-full ${
+                                  plan.id === "enterprise"
+                                    ? "bg-purple-600 hover:bg-purple-700"
+                                    : "bg-gray-700 hover:bg-gray-600"
+                                } py-3 rounded text-sm font-medium`}
+                                onClick={() => handleSelectPlan(plan)}
+                              >
+                                {plan.id === "enterprise" ? "Upgrade" : "Choose Plan"}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
 
                   <div className="bg-gradient-to-r from-blue-700 to-purple-700 rounded-lg p-6">
