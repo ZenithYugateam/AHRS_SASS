@@ -129,12 +129,8 @@ function Dashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<TokenPackage | null>(
-    null
-  );
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(
-    null
-  );
+  const [selectedPackage, setSelectedPackage] = useState<TokenPackage | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentType, setPaymentType] = useState<"token" | "plan" | null>(null);
   const [customTokenModalOpen, setCustomTokenModalOpen] = useState(false);
@@ -152,7 +148,7 @@ function Dashboard() {
     setCustomTokenPrice(Math.ceil(customTokenAmount * 0.15));
   }, [customTokenAmount]);
 
-  // On mount, parse the "user" object from sessionStorage
+  // On mount, parse the "user" object from sessionStorage and check for navigation target
   useEffect(() => {
     const userData = sessionStorage.getItem("user");
     if (userData) {
@@ -165,6 +161,14 @@ function Dashboard() {
         console.error("Error parsing user data:", error);
       }
     }
+
+    // Check if there's a navigation target in localStorage after refresh
+    const navigateTo = localStorage.getItem("navigateToAfterRefresh");
+    if (navigateTo) {
+      setCurrentPage(navigateTo);
+      localStorage.removeItem("navigateToAfterRefresh"); // Clear the navigation target
+    }
+
     setIsLoading(false);
   }, []);
 
@@ -173,9 +177,7 @@ function Dashboard() {
     setIsLoading(true);
     try {
       if (!sessionEmail) {
-        console.warn(
-          "No email found in session storage for subscription fetch."
-        );
+        console.warn("No email found in session storage for subscription fetch.");
         setIsLoading(false);
         return;
       }
@@ -183,15 +185,10 @@ function Dashboard() {
         `https://ywl2agqqd3.execute-api.us-east-1.amazonaws.com/default/fechdetails?email=${sessionEmail}`
       );
 
-      if (
-        response.data &&
-        response.data.subscriptions &&
-        response.data.subscriptions.length > 0
-      ) {
+      if (response.data && response.data.subscriptions && response.data.subscriptions.length > 0) {
         const sub = response.data.subscriptions[0];
         const matchingPlan = pricingData.plans.find(
-          (plan) =>
-            plan.name.toLowerCase() === sub.subscriptionType?.toLowerCase()
+          (plan) => plan.name.toLowerCase() === sub.subscriptionType?.toLowerCase()
         );
 
         if (matchingPlan) {
@@ -254,9 +251,7 @@ function Dashboard() {
   const fetchCompanyJobs = async () => {
     try {
       const storedUser = sessionStorage.getItem("user");
-      const companyId = storedUser
-        ? JSON.parse(storedUser).email
-        : "default@example.com";
+      const companyId = storedUser ? JSON.parse(storedUser).email : "default@example.com";
       const response = await axios.post(
         "https://ujohw8hshk.execute-api.us-east-1.amazonaws.com/default/get_company_posted_jobs",
         { company_id: companyId }
@@ -312,9 +307,7 @@ function Dashboard() {
 
       setTotalInterviews(jobsData.length);
       setTotalParticipants(candidateRows.length);
-      setTotalQualified(
-        candidateRows.filter((candidate) => candidate.status === 10).length
-      );
+      setTotalQualified(candidateRows.filter((candidate) => candidate.status === 10).length);
     } catch (error) {
       console.error("Error fetching interview stats:", error);
     }
@@ -558,9 +551,7 @@ function Dashboard() {
                 min="1"
                 value={customTokenAmount}
                 onChange={(e) =>
-                  setCustomTokenAmount(
-                    Math.max(1, parseInt(e.target.value) || 0)
-                  )
+                  setCustomTokenAmount(Math.max(1, parseInt(e.target.value) || 0))
                 }
                 className="w-full bg-gray-700 border border-gray-600 rounded-md px-4 py-2 text-white"
               />
@@ -589,29 +580,39 @@ function Dashboard() {
         </div>
       )}
 
-      <PaymentModal
-        isOpen={paymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        amount={
-          selectedPackage
-            ? selectedPackage.price
-            : selectedPlan
-            ? selectedPlan.price
-            : 0
-        }
-        description={
-          selectedPackage
-            ? `Purchase ${selectedPackage.name} (${selectedPackage.tokens} tokens)`
-            : selectedPlan
-            ? `Subscribe to ${selectedPlan.name} Plan`
-            : ""
-        }
-        onSuccess={handlePaymentSuccess}
-        tokensPurchased={selectedPackage ? selectedPackage.tokens : undefined}
-        tokensLeft={selectedPackage ? selectedPackage.tokens : undefined}
-        subscriptionType={selectedPlan ? selectedPlan.name : undefined}
-        email={userEmail || ""}
-      />
+      {paymentModalOpen && (
+        <>
+          {console.log("Opening PaymentModal with:", {
+            paymentType,
+            selectedPackage,
+            selectedPlan,
+            userEmail,
+          })}
+          <PaymentModal
+            isOpen={paymentModalOpen}
+            onClose={() => setPaymentModalOpen(false)}
+            amount={
+              selectedPackage
+                ? selectedPackage.price
+                : selectedPlan
+                ? selectedPlan.price
+                : 0
+            }
+            onSuccess={handlePaymentSuccess}
+            tokensPurchased={
+              paymentType === "token" && selectedPackage
+                ? selectedPackage.tokens
+                : paymentType === "plan" && selectedPlan
+                ? selectedPlan.tokens
+                : 0
+            }
+            subscriptionType={
+              paymentType === "plan" && selectedPlan ? selectedPlan.name : undefined
+            }
+            email={userEmail || ""}
+          />
+        </>
+      )}
 
       <header className="flex items-center justify-between p-4 border-b border-gray-800">
         <div className="flex items-center space-x-2">
@@ -625,9 +626,7 @@ function Dashboard() {
           <a
             href="#"
             className={`flex items-center space-x-2 ${
-              currentPage === "home"
-                ? "text-purple-400"
-                : "hover:text-purple-400"
+              currentPage === "home" ? "text-purple-400" : "hover:text-purple-400"
             }`}
             onClick={() => navigateTo("home")}
           >
@@ -637,9 +636,7 @@ function Dashboard() {
           <a
             href="#"
             className={`flex items-center space-x-2 ${
-              currentPage === "packages"
-                ? "text-purple-400"
-                : "hover:text-purple-400"
+              currentPage === "packages" ? "text-purple-400" : "hover:text-purple-400"
             }`}
             onClick={() => navigateTo("packages")}
           >
@@ -649,7 +646,7 @@ function Dashboard() {
           <a
             href="#"
             className="flex items-center space-x-2 hover:text-purple-400"
-            onClick={openInterviewMaker}
+            onClick={() => setCurrentPage("interview-maker")}
           >
             <Mic size={20} />
             <span>Interview Maker</span>
@@ -698,12 +695,8 @@ function Dashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-lg mb-2">Total Interviews Posted</p>
-                        <h3 className="text-5xl font-bold mb-2">
-                          {totalInterviews}
-                        </h3>
-                        <p className="text-sm mb-4">
-                          {totalInterviews} Applications
-                        </p>
+                        <h3 className="text-5xl font-bold mb-2">{totalInterviews}</h3>
+                        <p className="text-sm mb-4">{totalInterviews} Applications</p>
                         <button
                           className="bg-white text-purple-600 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium"
                           onClick={() => navigateTo("interview-maker")}
@@ -718,12 +711,8 @@ function Dashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-lg mb-2">Total Participants</p>
-                        <h3 className="text-5xl font-bold mb-2">
-                          {totalParticipants}
-                        </h3>
-                        <p className="text-sm mb-4">
-                          {totalParticipants} Applications
-                        </p>
+                        <h3 className="text-5xl font-bold mb-2">{totalParticipants}</h3>
+                        <p className="text-sm mb-4">{totalParticipants} Applications</p>
                         <button
                           className="bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium"
                           onClick={() => navigate("/total-interview")}
@@ -738,12 +727,8 @@ function Dashboard() {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-lg mb-2">Total Qualified</p>
-                        <h3 className="text-5xl font-bold mb-2">
-                          {totalQualified}
-                        </h3>
-                        <p className="text-sm mb-4">
-                          {totalQualified} Applications
-                        </p>
+                        <h3 className="text-5xl font-bold mb-2">{totalQualified}</h3>
+                        <p className="text-sm mb-4">{totalQualified} Applications</p>
                         <button
                           className="bg-white text-red-600 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium"
                           onClick={() => navigate("/total-interview")}
@@ -762,9 +747,7 @@ function Dashboard() {
               <>
                 <div className="mb-8">
                   <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-3xl font-bold">
-                      Subscription & Packages
-                    </h2>
+                    <h2 className="text-3xl font-bold">Subscription & Packages</h2>
                   </div>
 
                   {!currentPlan ? (
@@ -783,9 +766,7 @@ function Dashboard() {
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                              <p className="text-sm text-purple-200 mb-1">
-                                Tokens Usage
-                              </p>
+                              <p className="text-sm text-purple-200 mb-1">Tokens Usage</p>
                               <div className="w-full bg-purple-900 rounded-full h-3 mb-1">
                                 <div
                                   className="bg-white h-3 rounded-full"
@@ -828,8 +809,7 @@ function Dashboard() {
                                 const enterprisePlan = pricingData.plans.find(
                                   (p) => p.id === "enterprise"
                                 );
-                                if (enterprisePlan)
-                                  handleSelectPlan(enterprisePlan);
+                                if (enterprisePlan) handleSelectPlan(enterprisePlan);
                               }}
                             >
                               Upgrade
@@ -841,9 +821,7 @@ function Dashboard() {
                   )}
 
                   <div className="bg-gray-800 rounded-lg p-6 mb-8">
-                    <h3 className="text-xl font-bold mb-4">
-                      Need More Tokens?
-                    </h3>
+                    <h3 className="text-xl font-bold mb-4">Need More Tokens?</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       {pricingData.tokenPackages.map((pkg) => (
                         <div
@@ -856,12 +834,8 @@ function Dashboard() {
                             </div>
                           )}
                           <h4 className="font-bold mb-2">{pkg.name}</h4>
-                          <p className="text-2xl font-bold mb-2">
-                            ${pkg.price}
-                          </p>
-                          <p className="text-sm text-gray-300 mb-4">
-                            {pkg.description}
-                          </p>
+                          <p className="text-2xl font-bold mb-2">${pkg.price}</p>
+                          <p className="text-sm text-gray-300 mb-4">{pkg.description}</p>
                           <button
                             className="w-full bg-purple-600 hover:bg-purple-700 py-2 rounded text-sm"
                             onClick={() => handlePurchaseTokens(pkg)}
@@ -874,8 +848,7 @@ function Dashboard() {
                         <h4 className="font-bold mb-2">Custom Amount</h4>
                         <p className="text-2xl font-bold mb-2">You Decide</p>
                         <p className="text-sm text-gray-300 mb-4">
-                          Need a specific number of tokens? Create your custom
-                          package.
+                          Need a specific number of tokens? Create your custom package.
                         </p>
                         <button
                           className="w-full bg-white text-purple-700 hover:bg-gray-100 py-2 rounded text-sm font-medium"
@@ -887,9 +860,7 @@ function Dashboard() {
                     </div>
                   </div>
 
-                  <h3 className="text-2xl font-bold mb-4">
-                    Available Subscription Plans
-                  </h3>
+                  <h3 className="text-2xl font-bold mb-4">Available Subscription Plans</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
                     {pricingData.plans.map((plan) => (
                       <div
@@ -906,9 +877,7 @@ function Dashboard() {
                           </div>
                         )}
                         <div className="p-6">
-                          <h4 className="text-xl font-bold mb-2">
-                            {plan.name}
-                          </h4>
+                          <h4 className="text-xl font-bold mb-2">{plan.name}</h4>
                           <p className="text-3xl font-bold mb-4">
                             ${plan.price}
                             <span className="text-sm font-normal">/month</span>
@@ -923,8 +892,7 @@ function Dashboard() {
                           <ul className="space-y-3 mb-6">
                             {plan.features.map((feature, index) => {
                               const isIncluded =
-                                !feature.includes("API access") ||
-                                plan.id === "enterprise";
+                                !feature.includes("API access") || plan.id === "enterprise";
                               return (
                                 <li key={index} className="flex items-start">
                                   {isIncluded ? (
@@ -933,16 +901,9 @@ function Dashboard() {
                                       className="text-green-400 mr-2 mt-0.5"
                                     />
                                   ) : (
-                                    <X
-                                      size={18}
-                                      className="text-red-400 mr-2 mt-0.5"
-                                    />
+                                    <X size={18} className="text-red-400 mr-2 mt-0.5" />
                                   )}
-                                  <span
-                                    className={
-                                      !isIncluded ? "text-gray-400" : ""
-                                    }
-                                  >
+                                  <span className={!isIncluded ? "text-gray-400" : ""}>
                                     {feature}
                                   </span>
                                 </li>
@@ -968,9 +929,7 @@ function Dashboard() {
                               } py-3 rounded text-sm font-medium`}
                               onClick={() => handleSelectPlan(plan)}
                             >
-                              {plan.id === "enterprise"
-                                ? "Upgrade"
-                                : "Choose Plan"}
+                              {plan.id === "enterprise" ? "Upgrade" : "Choose Plan"}
                             </button>
                           )}
                         </div>
@@ -981,14 +940,11 @@ function Dashboard() {
                   <div className="bg-gradient-to-r from-blue-700 to-purple-700 rounded-lg p-6">
                     <div className="flex flex-col md:flex-row justify-between items-center">
                       <div>
-                        <h3 className="text-xl font-bold mb-2">
-                          Need a Custom Solution?
-                        </h3>
+                        <h3 className="text-xl font-bold mb-2">Need a Custom Solution?</h3>
                         <p className="max-w-2xl">
-                          We offer tailored enterprise solutions for
-                          organizations with specific requirements. Our team
-                          will work with you to create a custom package that
-                          fits your needs.
+                          We offer tailored enterprise solutions for organizations with
+                          specific requirements. Our team will work with you to create a
+                          custom package that fits your needs.
                         </p>
                       </div>
                       <button className="mt-4 md:mt-0 bg-white text-purple-700 hover:bg-gray-100 px-6 py-3 rounded-md font-medium">
@@ -1019,13 +975,9 @@ function Dashboard() {
                     {jobs.length > 0 ? (
                       [...jobs]
                         .sort((a, b) => {
-                          const dateA = a.posted_on
-                            ? new Date(a.posted_on).getTime()
-                            : 0;
-                          const dateB = b.posted_on
-                            ? new Date(b.posted_on).getTime()
-                            : 0;
-                          return dateB - dateA; // Latest jobs at the top
+                          const dateA = a.posted_on ? new Date(a.posted_on).getTime() : 0;
+                          const dateB = b.posted_on ? new Date(b.posted_on).getTime() : 0;
+                          return dateB - dateA;
                         })
                         .map((job) => (
                           <div
@@ -1034,19 +986,14 @@ function Dashboard() {
                           >
                             <div className="flex justify-between items-center mb-4">
                               <div className="flex items-center">
-                                <Briefcase
-                                  className="mr-2 text-purple-400"
-                                  size={20}
-                                />
+                                <Briefcase className="mr-2 text-purple-400" size={20} />
                                 <h2 className="text-xl font-semibold text-white">
                                   {job.title || "Untitled Job"}
                                 </h2>
                               </div>
                               <div className="flex items-center gap-3">
                                 <button
-                                  onClick={() =>
-                                    handleToggleJobStatus(job.job_id)
-                                  }
+                                  onClick={() => handleToggleJobStatus(job.job_id)}
                                   className={`flex items-center px-3 py-1 rounded-full text-sm transition-colors ${
                                     jobStatuses[job.job_id] === "active"
                                       ? "bg-green-600 hover:bg-green-700"
@@ -1055,16 +1002,11 @@ function Dashboard() {
                                 >
                                   {jobStatuses[job.job_id] === "active" ? (
                                     <>
-                                      <ToggleRight
-                                        size={16}
-                                        className="mr-1"
-                                      />{" "}
-                                      Active
+                                      <ToggleRight size={16} className="mr-1" /> Active
                                     </>
                                   ) : (
                                     <>
-                                      <ToggleLeft size={16} className="mr-1" />{" "}
-                                      Inactive
+                                      <ToggleLeft size={16} className="mr-1" /> Inactive
                                     </>
                                   )}
                                 </button>
@@ -1084,52 +1026,34 @@ function Dashboard() {
                             <div className="flex gap-3 mb-4">
                               {job.experience ? (
                                 <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
-                                  <Briefcase
-                                    size={12}
-                                    className="mr-1 text-purple-400"
-                                  />
+                                  <Briefcase size={12} className="mr-1 text-purple-400" />
                                   <span>{job.experience}</span>
                                 </div>
                               ) : (
                                 <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
-                                  <Briefcase
-                                    size={12}
-                                    className="mr-1 text-purple-400"
-                                  />
+                                  <Briefcase size={12} className="mr-1 text-purple-400" />
                                   <span>Placeholder</span>
                                 </div>
                               )}
                               {job.location ? (
                                 <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
-                                  <MapPin
-                                    size={12}
-                                    className="mr-1 text-purple-400"
-                                  />
+                                  <MapPin size={12} className="mr-1 text-purple-400" />
                                   <span>{job.location}</span>
                                 </div>
                               ) : (
                                 <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
-                                  <MapPin
-                                    size={12}
-                                    className="mr-1 text-purple-400"
-                                  />
+                                  <MapPin size={12} className="mr-1 text-purple-400" />
                                   <span>Placeholder</span>
                                 </div>
                               )}
                               {job.salary ? (
                                 <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full">
-                                  <DollarSign
-                                    size={12}
-                                    className="mr-1 text-purple-400"
-                                  />
+                                  <DollarSign size={12} className="mr-1 text-purple-400" />
                                   <span>{job.salary}</span>
                                 </div>
                               ) : (
                                 <div className="flex items-center bg-gray-700 text-gray-200 text-xs font-medium px-3 py-1 rounded-full opacity-0">
-                                  <DollarSign
-                                    size={12}
-                                    className="mr-1 text-purple-400"
-                                  />
+                                  <DollarSign size={12} className="mr-1 text-purple-400" />
                                   <span>Placeholder</span>
                                 </div>
                               )}
@@ -1160,8 +1084,7 @@ function Dashboard() {
                           onClick={() => navigate("/post-job")}
                           className="bg-purple-600 hover:bg-purple-700 px-5 py-2 rounded-lg inline-flex items-center text-white font-medium"
                         >
-                          <PlusCircle size={16} className="mr-2" /> Post a New
-                          Job
+                          <PlusCircle size={16} className="mr-2" /> Post a New Job
                         </button>
                       </div>
                     )}
@@ -1185,11 +1108,7 @@ function Dashboard() {
                 onClick={toggleSubscription}
                 className="mr-4 bg-gray-700 hover:bg-gray-600 p-2 rounded-full"
               >
-                {isSubscriptionExpanded ? (
-                  <ChevronDown size={20} />
-                ) : (
-                  <ChevronUp size={20} />
-                )}
+                {isSubscriptionExpanded ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
               </button>
               <div>
                 <p className="font-medium">
@@ -1226,9 +1145,7 @@ function Dashboard() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-300">
-                      Interviews Conducted
-                    </p>
+                    <p className="text-sm text-gray-300">Interviews Conducted</p>
                     <div className="w-full bg-gray-600 rounded-full h-2.5">
                       <div
                         className="bg-blue-500 h-2.5 rounded-full"
@@ -1236,8 +1153,7 @@ function Dashboard() {
                       ></div>
                     </div>
                     <p className="text-xs text-right mt-1">
-                      {interviewsUsed} /{" "}
-                      {currentPlan ? currentPlan.interviews : 0}
+                      {interviewsUsed} / {currentPlan ? currentPlan.interviews : 0}
                     </p>
                   </div>
                 </div>
@@ -1247,10 +1163,7 @@ function Dashboard() {
                 <h3 className="font-bold mb-2">Available Plans</h3>
                 <div className="space-y-2">
                   {pricingData.plans.map((plan) => (
-                    <div
-                      key={plan.id}
-                      className="flex justify-between items-center"
-                    >
+                    <div key={plan.id} className="flex justify-between items-center">
                       <p className="text-sm">{plan.name}</p>
                       <p
                         className={`text-sm font-bold ${

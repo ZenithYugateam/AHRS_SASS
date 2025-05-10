@@ -11,40 +11,81 @@ declare global {
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  tokensPurchased: number;
   amount: number;
-  description: string;
-  onSuccess: () => void;
-  tokensPurchased?: number;
   subscriptionType?: string;
-  email: string; // Email passed from Dashboard
+  email: string;
+  onSuccess: () => void;
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({
   isOpen,
   onClose,
+  tokensPurchased,
   amount,
-  description,
+  subscriptionType,
+  email,
   onSuccess,
-  tokensPurchased = 50,
-  subscriptionType = "Premium",
-  email
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Validate props
+  const isValidProps =
+    tokensPurchased !== undefined &&
+    tokensPurchased !== null &&
+    Number.isFinite(tokensPurchased) &&
+    tokensPurchased > 0 &&
+    Number.isFinite(amount) &&
+    amount > 0;
+
+  if (!isValidProps) {
+    if (process.env.NODE_ENV === "development") {
+      if (tokensPurchased === undefined || tokensPurchased === null) {
+        throw new Error("tokensPurchased is required and cannot be undefined or null.");
+      }
+      if (!Number.isFinite(tokensPurchased) || tokensPurchased <= 0) {
+        throw new Error(`Invalid tokensPurchased value: ${tokensPurchased}. It must be a positive number.`);
+      }
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new Error(`Invalid amount value: ${amount}. It must be a positive number.`);
+      }
+      if (subscriptionType === undefined && !email) {
+        throw new Error("subscriptionType or email is required.");
+      }
+    }
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md">
+          <h3 className="text-xl font-bold text-red-500">Error</h3>
+          <p className="text-gray-300">Invalid payment details. Please select a valid plan or token package and try again.</p>
+          <button
+            onClick={onClose}
+            className="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-md"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const description = subscriptionType
+    ? `Purchase of ${tokensPurchased} tokens for ${subscriptionType} subscription`
+    : `Purchase of ${tokensPurchased} tokens`;
 
   const handlePaymentSuccess = async (response: any) => {
     try {
       setIsProcessing(true);
       setError(null);
 
-      // Get the current date in ISO string format
       const currentDate = new Date().toISOString();
-      // Generate a unique subscriptionId (using timestamp for simplicity)
       const subscriptionId = Date.now().toString();
 
-      // Construct payload including subscriptionId
+      const tokensLeft = tokensPurchased;
+
       const payload = {
-        email: email, // Top-level email
+        email: email,
         paymentDetails: {
           email: email,
           amount: amount,
@@ -52,22 +93,20 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           transactionId: response.razorpay_payment_id,
           paymentMethod: "card",
           date: currentDate,
-          subscriptionType: subscriptionType // Added to match Lambda expectation
+          subscriptionType: subscriptionType || "Token Purchase",
         },
         subscriptionDetails: {
           email: email,
-          type: subscriptionType,
+          type: subscriptionType || "Token Purchase",
           tokensPurchased: tokensPurchased,
-          tokensLeft: tokensPurchased,
+          tokensLeft: tokensLeft,
           date: currentDate,
-          subscriptionId: subscriptionId // Added subscriptionId
-        }
+          subscriptionId: subscriptionId,
+        },
       };
 
-      // Log payload for debugging
       console.log("Final Payment Payload:", JSON.stringify(payload, null, 2));
 
-      // POST the payload to your API
       const apiResponse = await axios.post(
         "https://l8kyqmz0fc.execute-api.us-east-1.amazonaws.com/default/test",
         payload
@@ -76,11 +115,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 
       setIsProcessing(false);
       onSuccess();
+      onClose();
+
+      // Store navigation target in localStorage before refreshing
+      localStorage.setItem("navigateToAfterRefresh", "packages");
+
+      // Refresh the page
+      window.location.reload();
     } catch (err) {
       console.error("Error processing payment:", err);
-      setError(
-        err.response?.data?.message || "Failed to process payment. Please try again."
-      );
+      setError(err.response?.data?.message || "Failed to process payment. Please try again.");
       setIsProcessing(false);
     }
   };
@@ -88,39 +132,38 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const handlePayment = () => {
     setError(null);
 
-    // Dynamically load the Razorpay script
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     document.body.appendChild(script);
 
     script.onload = () => {
       const options = {
-        key: "rzp_test_DT1FmIE6tqtiAQ", // Replace with your Razorpay key
-        amount: amount * 100, // Amount in smallest currency unit (e.g., paise)
-        currency: "INR", // Note: Update to "USD" if your backend expects USD
+        key: "rzp_test_DT1FmIE6tqtiAQ",
+        amount: amount * 100,
+        currency: "INR",
         name: "AI Interview Platform",
         description: description,
-        image: "https://your-company-logo.png", // Replace with your logo URL
+        image: "https://your-company-logo.png",
         handler: (response: any) => {
           handlePaymentSuccess(response);
         },
         prefill: {
-          email: email
+          email: email,
         },
         theme: {
-          color: "#7C3AED"
+          color: "#7C3AED",
         },
         modal: {
-          ondismiss: function () {
+          ondismiss: () => {
             onClose();
-          }
+          },
         },
         method: {
           card: true,
           netbanking: true,
           upi: true,
-          wallet: true
-        }
+          wallet: true,
+        },
       };
 
       const razorpay = new window.Razorpay(options);
