@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, PlusCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
+// NOTE: Exposing your API key in client code is not secure for production.
+// Move this to a server-side endpoint in a production environment.
+const OPENAI_API_KEY = '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';
 
 function PostJob() {
   const navigate = useNavigate();
@@ -22,6 +27,7 @@ function PostJob() {
     collegeNames: '',
   });
   const [showToast, setShowToast] = useState(false);
+  const [isGenerating, setIsGenerating] = useState({ description: false, responsibilities: false, benefits: false });
 
   useEffect(() => {
     const storedUser = sessionStorage.getItem('user');
@@ -52,7 +58,55 @@ function PostJob() {
 
   const validateForm = () => {
     const requiredFields = ['title', 'description', 'salary', 'location'];
-    return requiredFields.every(field => formData[field].trim() !== '');
+    return requiredFields.every((field) => formData[field].trim() !== '');
+  };
+
+  const generateContent = async (field) => {
+    if (!formData.title) {
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+
+    setIsGenerating((prev) => ({ ...prev, [field]: true }));
+
+    let prompt;
+    if (field === 'description') {
+      prompt = `Generate a job description for a ${formData.title} position as a list of 5-6 key responsibilities. Focus only on the role's core duties and purpose, excluding skills, qualifications, location, or other details. Write in plain text as complete sentences, one per line, without bullet points, Markdown, numbering, or symbols. Keep it concise and professional.`;
+    } else if (field === 'responsibilities') {
+      prompt = `Generate a list of 5-7 key responsibilities for a ${formData.title} position. Include specific, role-relevant tasks, such as designing interfaces, collaborating with teams, optimizing performance, or ensuring accessibility for a frontend developer. Write in plain text as complete sentences, one per line, without bullet points, Markdown, numbering, or symbols. Keep it concise and professional.`;
+    } else if (field === 'benefits') {
+      prompt = `Generate a list of 3-5 benefits for a ${formData.title} position. Include common benefits like health insurance, paid time off, professional development, or flexible work, tailored to the role. Write in plain text as complete sentences, one per line, without bullet points, Markdown, numbering, or symbols. Keep it very concise and professional.`;
+    }
+
+    try {
+      const response = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          model: 'qwen/qwq-32b:free',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+          },
+        }
+      );
+
+      const generatedText = response.data.choices[0].message.content;
+      setFormData((prevData) => ({
+        ...prevData,
+        [field === 'description' ? 'description' : field === 'responsibilities' ? 'keyResponsibilities' : 'benefits']: generatedText,
+      }));
+    } catch (error) {
+      console.error(`Error generating ${field}:`, error);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } finally {
+      setIsGenerating((prev) => ({ ...prev, [field]: false }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -95,7 +149,9 @@ function PostJob() {
         {showToast && (
           <div className="fixed top-4 right-4 z-50 animate-fade-in">
             <div className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg">
-              Please enter all required details (Job Title, Description, Salary, and Location)
+              {formData.title
+                ? 'Error generating content or missing required fields'
+                : 'Please enter a job title to generate content or fill all required fields'}
             </div>
           </div>
         )}
@@ -188,7 +244,21 @@ function PostJob() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Job Description *</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-300">Job Description *</label>
+                <button
+                  type="button"
+                  onClick={() => generateContent('description')}
+                  disabled={isGenerating.description || !formData.title}
+                  className={`px-3 py-1 text-sm rounded-lg ${
+                    isGenerating.description || !formData.title
+                      ? 'bg-gray-600 cursor-not-allowed'
+                      : 'bg-purple-600 hover:bg-purple-700'
+                  } text-white transition-colors`}
+                >
+                  {isGenerating.description ? 'Generating...' : 'Auto-Generate'}
+                </button>
+              </div>
               <textarea
                 name="description"
                 value={formData.description}
@@ -200,7 +270,21 @@ function PostJob() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Key Responsibilities</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-300">Key Responsibilities</label>
+                <button
+                  type="button"
+                  onClick={() => generateContent('responsibilities')}
+                  disabled={isGenerating.responsibilities || !formData.title}
+                  className={`px-3 py-1 text-sm rounded-lg ${
+                    isGenerating.responsibilities || !formData.title
+                      ? 'bg-gray-600 cursor-not-allowed'
+                      : 'bg-purple-600 hover:bg-purple-700'
+                  } text-white transition-colors`}
+                >
+                  {isGenerating.responsibilities ? 'Generating...' : 'Auto-Generate'}
+                </button>
+              </div>
               <textarea
                 name="keyResponsibilities"
                 value={formData.keyResponsibilities}
@@ -211,7 +295,21 @@ function PostJob() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Benefits</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-300">Benefits</label>
+                <button
+                  type="button"
+                  onClick={() => generateContent('benefits')}
+                  disabled={isGenerating.benefits || !formData.title}
+                  className={`px-3 py-1 text-sm rounded-lg ${
+                    isGenerating.benefits || !formData.title
+                      ? 'bg-gray-600 cursor-not-allowed'
+                      : 'bg-purple-600 hover:bg-purple-700'
+                  } text-white transition-colors`}
+                >
+                  {isGenerating.benefits ? 'Generating...' : 'Auto-Generate'}
+                </button>
+              </div>
               <textarea
                 name="benefits"
                 value={formData.benefits}
