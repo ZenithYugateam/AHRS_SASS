@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
-import 'react-circular-progressbar/dist/styles.css';
 import * as pdfjsLib from 'pdfjs-dist';
 import { ChevronDown, User } from 'lucide-react';
 
@@ -271,23 +269,29 @@ function ResumeUpload() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5 }}
-              className="flex flex-col items-center gap-6 text-white"
+              className="flex flex-col items-center gap-6 text-white bg-[#1E1E2F] p-8 rounded-xl shadow-lg w-full max-w-md"
             >
-              <div className="w-32 h-32">
-                <CircularProgressbar
-                  value={matchPercentage}
-                  text={`${matchPercentage.toFixed(0)}%`}
-                  styles={buildStyles({
-                    textColor: '#ffffff',
-                    pathColor: matchPercentage >= 30 ? '#4CAF50' : '#FF5252',
-                    trailColor: '#2B2D42',
-                  })}
-                />
+              <h2 className="text-2xl font-bold text-blue-400">Resume Analysis Results</h2>
+              <div className="flex flex-col gap-4 w-full">
+                <div className="flex justify-between items-center border-b border-gray-600 pb-2">
+                  <span className="text-lg font-semibold">Job Title:</span>
+                  <span className="text-lg">{job?.title || 'Not Specified'}</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-gray-600 pb-2">
+                  <span className="text-lg font-semibold">Match Percentage:</span>
+                  <span className="text-lg font-bold text-green-400">{matchPercentage.toFixed(0)}%</span>
+                </div>
+                <div className="flex justify-between items-center border-b border-gray-600 pb-2">
+                  <span className="text-lg font-semibold">Status:</span>
+                  <span className={`text-lg ${matchPercentage >= 30 ? 'text-green-400' : 'text-red-400'}`}>
+                    {matchPercentage >= 30 ? 'Eligible to Proceed' : 'Below Required Threshold (30%)'}
+                  </span>
+                </div>
               </div>
-              {matchPercentage >= 0 ? (
+              {matchPercentage >= 30 ? (
                 <div className="text-center">
-                  <p className="text-lg font-semibold">Would you like to proceed now or later?</p>
-                  <div className="flex gap-4 mt-4">
+                  <p className="text-lg font-semibold mb-4">Would you like to proceed now or later?</p>
+                  <div className="flex gap-4 justify-center">
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
@@ -307,7 +311,7 @@ function ResumeUpload() {
                   </div>
                 </div>
               ) : (
-                <p className="text-red-500 text-lg font-semibold">
+                <p className="text-red-500 text-lg font-semibold text-center">
                   Your resume does not meet the required match percentage (30%).
                 </p>
               )}
