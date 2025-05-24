@@ -5,7 +5,7 @@ import axios from 'axios';
 
 // NOTE: Exposing your API key in client code is not secure for production.
 // Move this to a server-side endpoint in a production environment.
-const OPENAI_API_KEY = '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';
+const OPENAI_API_KEY = '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';
 
 function PostJob() {
   const navigate = useNavigate();

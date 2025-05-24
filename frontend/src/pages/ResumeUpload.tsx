@@ -71,7 +71,7 @@ function ResumeUpload() {
 
   const analyzeResumeWithAI = async (resumeText: string, jobDescription: string) => {
     try {
-      const apiKey = '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';
+      const apiKey = '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';
       const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
         {
