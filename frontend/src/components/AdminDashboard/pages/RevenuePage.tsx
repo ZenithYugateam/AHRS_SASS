@@ -1,6 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DollarSign, Wallet, Users, TrendingUp, Download, Calendar } from 'lucide-react';
 import StatCard from '../components/StatCard';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Register ChartJS components
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
 interface PricingPlan {
   id: number;
@@ -13,24 +27,121 @@ interface PricingPlan {
   revenue: number;
 }
 
-interface RevenuePageProps {
-  pricingPlans: PricingPlan[];
-}
+const RevenuePage: React.FC = () => {
+  const [pricingPlans, setPricingPlans] = useState<PricingPlan[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-const RevenuePage: React.FC<RevenuePageProps> = ({ pricingPlans }) => {
-  const totalRevenue = pricingPlans.reduce((sum, plan) => sum + plan.revenue, 0);
-  const totalSubscribers = pricingPlans.reduce((sum, plan) => sum + plan.subscribers, 0);
+  // Fetch pricing plans from the pricing API
+  useEffect(() => {
+    const fetchPricingPlans = async () => {
+      try {
+        const response = await fetch(
+          'https://ngwu0au0uh.execute-api.us-east-1.amazonaws.com/default/get_pricing_list'
+        );
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        const formattedData = data.map((plan: any) => ({
+          id: plan.id,
+          name: plan.name,
+          duration: Number(plan.duration),
+          tokensPerMinute: Number(plan.tokensPerMinute),
+          tokens: Number(plan.tokens),
+          price: Number(plan.price),
+          subscribers: Number(plan.subscribers),
+          revenue: Number(plan.revenue),
+        }));
+        setPricingPlans(formattedData);
+      } catch (err) {
+        console.error('Error fetching pricing plans:', err);
+        setError('Failed to load pricing plans. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Generate monthly data for the chart
-  const monthlyData = Array.from({ length: 12 }).map((_, i) => {
-    // Create a realistic growth pattern with some randomness
-    const baseValue = totalRevenue * (0.7 + (i * 0.05));
-    const randomFactor = 0.9 + (Math.random() * 0.2); // Random between 0.9 and 1.1
-    return baseValue * randomFactor;
+    fetchPricingPlans();
+  }, []);
+
+  // Fetch transactions from the dash API
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const res = await fetch(
+          'https://upftf5d4qb.execute-api.us-east-1.amazonaws.com/default/dash'
+        );
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        const data = await res.json();
+        // If the API returns a single transaction, wrap it in an array.
+        setTransactions(Array.isArray(data) ? data : [data]);
+      } catch (err) {
+        console.error('Error fetching transactions:', err);
+        // Optionally set an error state for transactions if needed
+      }
+    };
+
+    fetchTransactions();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen text-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen text-white">
+        <p>{error}</p>
+      </div>
+    );
+  }
+
+  // Group transactions by subscription type and sum their revenue
+  const transactionRevenueByType = transactions.reduce((acc: Record<string, number>, tx: any) => {
+    if (tx.subscriptionType && tx.amount) {
+      const amount = Number(tx.amount);
+      acc[tx.subscriptionType] = (acc[tx.subscriptionType] || 0) + amount;
+    }
+    return acc;
+  }, {});
+
+  // Merge transaction revenue into pricing plans. If a subscription type from transactions
+  // does not exist in the pricing plans, add it as a new plan.
+  const plansMap: Record<string, PricingPlan> = {};
+  pricingPlans.forEach(plan => {
+    plansMap[plan.name] = { ...plan };
   });
 
-  // Calculate the maximum value for scaling
-  const maxValue = Math.max(...monthlyData);
+  Object.entries(transactionRevenueByType).forEach(([subscription, revenue]) => {
+    if (plansMap[subscription]) {
+      plansMap[subscription].revenue += revenue;
+      // Optionally update subscribers count if you want to count each new transaction as a subscriber
+      plansMap[subscription].subscribers += 1;
+    } else {
+      plansMap[subscription] = {
+        id: Date.now(), // Use a unique ID generator as needed
+        name: subscription,
+        duration: 0,
+        tokensPerMinute: 0,
+        tokens: 0,
+        price: 0,
+        subscribers: 1,
+        revenue: revenue,
+      };
+    }
+  });
+
+  const aggregatedPlans = Object.values(plansMap);
+  const totalRevenue = aggregatedPlans.reduce((sum, plan) => sum + plan.revenue, 0);
+  const totalSubscribers = aggregatedPlans.reduce((sum, plan) => sum + plan.subscribers, 0);
 
   return (
     <div>
@@ -41,74 +152,36 @@ const RevenuePage: React.FC<RevenuePageProps> = ({ pricingPlans }) => {
           Export Report
         </button>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <StatCard 
-          title="Monthly Revenue" 
-          value={`$${totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} 
-          change="15%" 
+        <StatCard
+          title="Monthly Revenue"
+          value={`$${totalRevenue.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`}
+          change="↑"
           icon={<DollarSign className="h-5 w-5 text-green-400" />}
         />
-        
-        <StatCard 
-          title="Annual Revenue" 
-          value={`$${(totalRevenue * 12).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`} 
-          change="22% YoY" 
+        <StatCard
+          title="Annual Revenue"
+          value={`$${(totalRevenue * 12).toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`}
+          change="↑"
           icon={<Wallet className="h-5 w-5 text-green-400" />}
         />
-        
-        <StatCard 
-          title="Avg. Revenue Per User" 
-          value={`$${(totalRevenue / totalSubscribers).toFixed(2)}`} 
-          change="5%" 
+        <StatCard
+          title="Avg. Revenue Per User"
+          value={`$${(totalSubscribers > 0 ? totalRevenue / totalSubscribers : 0).toFixed(2)}`}
+          change="↑"
           icon={<Users className="h-5 w-5 text-blue-400" />}
         />
-        
-        <StatCard 
-          title="Churn Rate" 
-          value="3.2%" 
-          change="0.8%" 
-          icon={<TrendingUp className="h-5 w-5 text-red-400" />}
-        />
       </div>
-      
-      <div className="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700 mb-8">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold">Revenue Trends</h3>
-          <div className="flex space-x-2">
-            <button className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded">3M</button>
-            <button className="text-xs bg-purple-600 px-2 py-1 rounded">6M</button>
-            <button className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded">1Y</button>
-          </div>
-        </div>
-        <div className="h-64 flex items-end space-x-2">
-          {monthlyData.map((value, i) => {
-            const height = (value / maxValue) * 90; // Scale to 90% of container height
-            const colors = [
-              'from-purple-600 to-indigo-600',
-              'from-indigo-600 to-blue-600',
-              'from-blue-600 to-cyan-600'
-            ];
-            return (
-              <div key={i} className="flex-1 flex flex-col items-center">
-                <div 
-                  className={`w-full bg-gradient-to-t ${colors[i % 3]} rounded-t relative group shadow-lg shadow-purple-900/20`}
-                  style={{ height: `${height}%` }}
-                >
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    ${value.toFixed(2)}
-                  </div>
-                </div>
-                <div className="text-xs text-gray-400 mt-2">
-                  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][i]}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Revenue by Plan Table */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold">Revenue by Plan</h3>
@@ -125,9 +198,9 @@ const RevenuePage: React.FC<RevenuePageProps> = ({ pricingPlans }) => {
                 </tr>
               </thead>
               <tbody>
-                {pricingPlans.map((plan) => {
+                {aggregatedPlans.map((plan) => {
                   const lastMonth = plan.revenue * (0.85 + Math.random() * 0.1);
-                  const growth = ((plan.revenue - lastMonth) / lastMonth) * 100;
+                  const growth = lastMonth ? ((plan.revenue - lastMonth) / lastMonth) * 100 : 0;
                   return (
                     <tr key={plan.id} className="border-b border-gray-700 hover:bg-gray-750">
                       <td className="py-3 font-medium">{plan.name}</td>
@@ -142,21 +215,20 @@ const RevenuePage: React.FC<RevenuePageProps> = ({ pricingPlans }) => {
               </tbody>
             </table>
           </div>
-          
-          {/* Add visual representation of revenue distribution */}
+
           <div className="mt-6">
             <h4 className="text-sm font-medium text-gray-400 mb-3">Revenue Distribution</h4>
             <div className="flex h-10 rounded-md overflow-hidden shadow-lg">
-              {pricingPlans.map((plan, index) => {
-                const percentage = (plan.revenue / totalRevenue) * 100;
+              {aggregatedPlans.map((plan, index) => {
+                const percentage = totalRevenue > 0 ? (plan.revenue / totalRevenue) * 100 : 0;
                 const colors = [
                   'bg-gradient-to-r from-purple-700 to-purple-500',
                   'bg-gradient-to-r from-indigo-700 to-indigo-500',
                   'bg-gradient-to-r from-blue-700 to-blue-500',
-                  'bg-gradient-to-r from-cyan-700 to-cyan-500'
+                  'bg-gradient-to-r from-cyan-700 to-cyan-500',
                 ];
                 return (
-                  <div 
+                  <div
                     key={plan.id}
                     className={`${colors[index % colors.length]} relative group`}
                     style={{ width: `${percentage}%` }}
@@ -174,45 +246,38 @@ const RevenuePage: React.FC<RevenuePageProps> = ({ pricingPlans }) => {
             </div>
           </div>
         </div>
-        
+
+        {/* Forecasted Revenue Section */}
         <div className="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold">Forecasted Revenue</h3>
             <TrendingUp className="h-5 w-5 text-green-400" />
           </div>
-          
-          {/* Add visual forecast chart */}
+
           <div className="h-40 mb-6 relative">
             <div className="absolute inset-x-0 bottom-0 h-px bg-gray-700"></div>
             <div className="absolute inset-y-0 left-0 w-px bg-gray-700"></div>
-            
             <svg className="w-full h-full" viewBox="0 0 100 50" preserveAspectRatio="none">
-              {/* Historical data line */}
-              <path 
-                d="M0,40 L10,38 L20,35 L30,32" 
-                fill="none" 
-                stroke="#8B5CF6" 
+              <path
+                d="M0,40 L10,38 L20,35 L30,32"
+                fill="none"
+                stroke="#8B5CF6"
                 strokeWidth="3"
                 filter="drop-shadow(0 1px 2px rgba(139, 92, 246, 0.5))"
               />
-              
-              {/* Forecast line (dashed) */}
-              <path 
-                d="M30,32 L40,28 L50,25 L60,21 L70,18 L80,15 L90,12 L100,10" 
-                fill="none" 
-                stroke="url(#forecastGradient)" 
+              <path
+                d="M30,32 L40,28 L50,25 L60,21 L70,18 L80,15 L90,12 L100,10"
+                fill="none"
+                stroke="url(#forecastGradient)"
                 strokeWidth="3"
                 strokeDasharray="3,3"
                 filter="drop-shadow(0 1px 2px rgba(79, 70, 229, 0.5))"
               />
-              
-              {/* Confidence area */}
-              <path 
-                d="M30,32 L40,28 L50,25 L60,21 L70,18 L80,15 L90,12 L100,10 L100,20 L90,22 L80,25 L70,28 L60,31 L50,35 L40,38 L30,32 Z" 
+              <path
+                d="M30,32 L40,28 L50,25 L60,21 L70,18 L80,15 L90,12 L100,10 L100,20 L90,22 L80,25 L70,28 L60,31 L50,35 L40,38 L30,32 Z"
                 fill="url(#areaGradient)"
                 opacity="0.3"
               />
-              
               <defs>
                 <linearGradient id="forecastGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#8B5CF6" />
@@ -224,7 +289,6 @@ const RevenuePage: React.FC<RevenuePageProps> = ({ pricingPlans }) => {
                 </linearGradient>
               </defs>
             </svg>
-            
             <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400">
               <span>Current</span>
               <span>Q3</span>
@@ -232,7 +296,7 @@ const RevenuePage: React.FC<RevenuePageProps> = ({ pricingPlans }) => {
               <span>FY 2025</span>
             </div>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>

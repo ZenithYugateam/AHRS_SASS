@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, PlusCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+
+// NOTE: Exposing your API key in client code is not secure for production.
+// Move this to a server-side endpoint in a production environment.
+const OPENAI_API_KEY = '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';
 
 function PostJob() {
   const navigate = useNavigate();
@@ -9,25 +14,37 @@ function PostJob() {
     jobId: '',
     displayName: '',
     postedOn: '',
+    expiresOn: '',
     title: '',
     description: '',
     experience: '',
     salary: '',
     location: '',
+    keyResponsibilities: '',
+    benefits: '',
     approvalRequired: false,
+    privateJob: false,
+    collegeNames: '',
   });
+  const [showToast, setShowToast] = useState(false);
+  const [isGenerating, setIsGenerating] = useState({ description: false, responsibilities: false, benefits: false });
 
   useEffect(() => {
-    // Retrieve logged in user's email from sessionStorage
     const storedUser = sessionStorage.getItem('user');
     const sessionEmail = storedUser ? JSON.parse(storedUser).email : 'default@example.com';
-    const randomJobId = Math.floor(Math.random() * 1000000); // generate random job id
-
+    const sessionDisplayName = storedUser ? JSON.parse(storedUser).username : 'No Display Name';
+    const randomJobId = Math.floor(Math.random() * 1000000);
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      console.log('User Data:', userData);
+    } else {
+      console.log('No user data found in sessionStorage');
+    }
     setFormData((prevData) => ({
       ...prevData,
       companyId: sessionEmail,
       jobId: randomJobId,
-      displayName: "zenithyugaa",
+      displayName: sessionDisplayName,
     }));
   }, []);
 
@@ -39,8 +56,67 @@ function PostJob() {
     }));
   };
 
+  const validateForm = () => {
+    const requiredFields = ['title', 'description', 'salary', 'location'];
+    return requiredFields.every((field) => formData[field].trim() !== '');
+  };
+
+  const generateContent = async (field) => {
+    if (!formData.title) {
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+
+    setIsGenerating((prev) => ({ ...prev, [field]: true }));
+
+    let prompt;
+    if (field === 'description') {
+      prompt = `Generate a job description for a ${formData.title} position as a list of 5-6 key responsibilities. Focus only on the role's core duties and purpose, excluding skills, qualifications, location, or other details. Write in plain text as complete sentences, one per line, without bullet points, Markdown, numbering, or symbols. Keep it concise and professional.`;
+    } else if (field === 'responsibilities') {
+      prompt = `Generate a list of 5-7 key responsibilities for a ${formData.title} position. Include specific, role-relevant tasks, such as designing interfaces, collaborating with teams, optimizing performance, or ensuring accessibility for a frontend developer. Write in plain text as complete sentences, one per line, without bullet points, Markdown, numbering, or symbols. Keep it concise and professional.`;
+    } else if (field === 'benefits') {
+      prompt = `Generate a list of 3-5 benefits for a ${formData.title} position. Include common benefits like health insurance, paid time off, professional development, or flexible work, tailored to the role. Write in plain text as complete sentences, one per line, without bullet points, Markdown, numbering, or symbols. Keep it very concise and professional.`;
+    }
+
+    try {
+      const response = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          model: 'qwen/qwq-32b:free',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+          },
+        }
+      );
+
+      const generatedText = response.data.choices[0].message.content;
+      setFormData((prevData) => ({
+        ...prevData,
+        [field === 'description' ? 'description' : field === 'responsibilities' ? 'keyResponsibilities' : 'benefits']: generatedText,
+      }));
+    } catch (error) {
+      console.error(`Error generating ${field}:`, error);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } finally {
+      setIsGenerating((prev) => ({ ...prev, [field]: false }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
 
     try {
       const response = await fetch('https://y0nraqyq18.execute-api.us-east-1.amazonaws.com/default/post_job', {
@@ -55,8 +131,7 @@ function PostJob() {
       const result = await response.json();
       if (response.ok) {
         alert('Job posted successfully!');
-        // Redirect to the interview maker stepper view
-        navigate('/interview-maker');
+        navigate('/company-dashboard#');
       } else {
         alert('Error posting job');
       }
@@ -71,7 +146,15 @@ function PostJob() {
         <h1 className="text-4xl font-bold mb-8 drop-shadow-[0_0_8px_rgba(128,0,128,0.8)]">
           Company Posted Jobs
         </h1>
-        {/* Post New Job Button */}
+        {showToast && (
+          <div className="fixed top-4 right-4 z-50 animate-fade-in">
+            <div className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg">
+              {formData.title
+                ? 'Error generating content or missing required fields'
+                : 'Please enter a job title to generate content or fill all required fields'}
+            </div>
+          </div>
+        )}
         <div className="flex justify-end mb-8">
           <button
             onClick={() => navigate('/post-job')}
@@ -99,9 +182,8 @@ function PostJob() {
                   type="text"
                   name="companyId"
                   value={formData.companyId}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   readOnly
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
                 />
               </div>
               <div>
@@ -110,9 +192,8 @@ function PostJob() {
                   type="text"
                   name="jobId"
                   value={formData.jobId}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   readOnly
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
                 />
               </div>
               <div>
@@ -121,43 +202,120 @@ function PostJob() {
                   type="text"
                   name="displayName"
                   value={formData.displayName}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   readOnly
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Posted On</label>
+                <input
+                  type="date"
+                  name="postedOn"
+                  value={formData.postedOn}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Expires On</label>
+                <input
+                  type="date"
+                  name="expiresOn"
+                  value={formData.expiresOn}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Posted On</label>
-              <input
-                type="date"
-                name="postedOn"
-                value={formData.postedOn}
-                onChange={handleChange}
-                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Job Title</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Job Title *</label>
               <input
                 type="text"
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Job Description</label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-300">Job Description *</label>
+                <button
+                  type="button"
+                  onClick={() => generateContent('description')}
+                  disabled={isGenerating.description || !formData.title}
+                  className={`px-3 py-1 text-sm rounded-lg ${
+                    isGenerating.description || !formData.title
+                      ? 'bg-gray-600 cursor-not-allowed'
+                      : 'bg-purple-600 hover:bg-purple-700'
+                  } text-white transition-colors`}
+                >
+                  {isGenerating.description ? 'Generating...' : 'Auto-Generate'}
+                </button>
+              </div>
               <textarea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
-                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-300">Key Responsibilities</label>
+                <button
+                  type="button"
+                  onClick={() => generateContent('responsibilities')}
+                  disabled={isGenerating.responsibilities || !formData.title}
+                  className={`px-3 py-1 text-sm rounded-lg ${
+                    isGenerating.responsibilities || !formData.title
+                      ? 'bg-gray-600 cursor-not-allowed'
+                      : 'bg-purple-600 hover:bg-purple-700'
+                  } text-white transition-colors`}
+                >
+                  {isGenerating.responsibilities ? 'Generating...' : 'Auto-Generate'}
+                </button>
+              </div>
+              <textarea
+                name="keyResponsibilities"
+                value={formData.keyResponsibilities}
+                onChange={handleChange}
+                rows={4}
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-gray-300">Benefits</label>
+                <button
+                  type="button"
+                  onClick={() => generateContent('benefits')}
+                  disabled={isGenerating.benefits || !formData.title}
+                  className={`px-3 py-1 text-sm rounded-lg ${
+                    isGenerating.benefits || !formData.title
+                      ? 'bg-gray-600 cursor-not-allowed'
+                      : 'bg-purple-600 hover:bg-purple-700'
+                  } text-white transition-colors`}
+                >
+                  {isGenerating.benefits ? 'Generating...' : 'Auto-Generate'}
+                </button>
+              </div>
+              <textarea
+                name="benefits"
+                value={formData.benefits}
+                onChange={handleChange}
+                rows={4}
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
               />
             </div>
 
@@ -169,29 +327,31 @@ function PostJob() {
                   name="experience"
                   value={formData.experience}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Salary</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Salary *</label>
                 <input
                   type="text"
                   name="salary"
                   value={formData.salary}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  required
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Location</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Location *</label>
               <input
                 type="text"
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
+                className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
               />
             </div>
 
@@ -208,6 +368,33 @@ function PostJob() {
                 <span className="ml-3 text-sm font-medium text-gray-300">Approval Required</span>
               </label>
             </div>
+
+            <div className="flex items-center gap-4">
+              <label className="block text-sm font-medium text-gray-300">Private Job</label>
+              <input
+                type="checkbox"
+                name="privateJob"
+                checked={formData.privateJob}
+                onChange={handleChange}
+                className="toggle-checkbox"
+              />
+            </div>
+
+            {formData.privateJob && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  College Names
+                </label>
+                <textarea
+                  name="collegeNames"
+                  value={formData.collegeNames}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#2A2538] border border-gray-700 rounded-lg text-white"
+                  placeholder="Enter college names separated by commas"
+                  rows={3}
+                />
+              </div>
+            )}
 
             <div className="flex justify-end gap-4 pt-6">
               <button
