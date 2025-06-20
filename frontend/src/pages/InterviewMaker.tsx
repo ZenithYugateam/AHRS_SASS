@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Zap,
@@ -18,7 +18,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { motion } from 'framer-motion';
 
 // NOTE: Exposing your API key in client code is not secure for production.
-const OPENAI_API_KEY = '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';
+const OPENAI_API_KEY = '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';
 
 type Question = {
   question: string;
@@ -57,6 +57,7 @@ type InterviewFormData = {
   num_questions: string;
   marks: string[];
   questions: Question[];
+  difficulty: 'Easy' | 'Medium' | 'Hard' | 'Mixed';
 };
 
 function InterviewMaker() {
@@ -81,10 +82,12 @@ function InterviewMaker() {
     num_questions: job.num_questions || '3',
     marks: ['10'],
     questions: [{ question: '', answer: '' }],
+    difficulty: 'Medium',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingTech, setIsLoadingTech] = useState(false); // Separate loading for technical skills
+  const [isLoadingSoft, setIsLoadingSoft] = useState(false); // Separate loading for soft skills
   const [tokensLeft, setTokensLeft] = useState<number | null>(null);
 
   // Mock pricing data state (adjust as per your actual implementation)
@@ -96,6 +99,74 @@ function InterviewMaker() {
   const [currentPlan, setCurrentPlan] = useState<SubscriptionPlan | null>(null);
 
   const totalMarks = formData.marks.reduce((acc, cur) => acc + Number(cur), 0);
+
+  const generateTechnicalSkills = async () => {
+    if (formData.job_title) {
+      setIsLoadingTech(true);
+      try {
+        const prompt = `Based on the job title "${formData.job_title}", suggest a comma-separated list of relevant technical skills (e.g., React, Node.js, AWS). Return only the list.`;
+        const response = await axios.post(
+          "https://openrouter.ai/api/v1/chat/completions",
+          {
+            model: "qwen/qwq-32b:free",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${OPENAI_API_KEY}`,
+            },
+          }
+        );
+        const content = response.data.choices[0].message.content.trim();
+        setFormData((prev) => ({ ...prev, technical_skills: content }));
+        toast.success('Technical skills generated successfully!');
+      } catch (error) {
+        console.error('Error generating technical skills:', error);
+        toast.error('Error generating technical skills. Using defaults.');
+        setFormData((prev) => ({ ...prev, technical_skills: 'React, Node.js, AWS' }));
+      } finally {
+        setIsLoadingTech(false);
+      }
+    } else {
+      toast.error('Please enter a job title first.');
+    }
+  };
+
+  const generateSoftSkills = async () => {
+    if (formData.job_title) {
+      setIsLoadingSoft(true);
+      try {
+        const prompt = `Based on the job title "${formData.job_title}", suggest a comma-separated list of relevant soft skills (e.g., communication, problem-solving). Return only the list.`;
+        const response = await axios.post(
+          "https://openrouter.ai/api/v1/chat/completions",
+          {
+            model: "qwen/qwq-32b:free",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${OPENAI_API_KEY}`,
+            },
+          }
+        );
+        const content = response.data.choices[0].message.content.trim();
+        setFormData((prev) => ({ ...prev, soft_skills: content }));
+        toast.success('Soft skills generated successfully!');
+      } catch (error) {
+        console.error('Error generating soft skills:', error);
+        toast.error('Error generating soft skills. Using defaults.');
+        setFormData((prev) => ({ ...prev, soft_skills: 'communication, problem-solving' }));
+      } finally {
+        setIsLoadingSoft(false);
+      }
+    } else {
+      toast.error('Please enter a job title first.');
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -161,15 +232,16 @@ function InterviewMaker() {
       num_questions: job.num_questions || '3',
       marks: ['10'],
       questions: [{ question: '', answer: '' }],
+      difficulty: 'Medium',
     });
   };
 
   const fetchUserSubscription = async (sessionEmail: string): Promise<number | null> => {
-    setIsLoading(true);
+    setIsLoadingTech(false); // Reset loading states during subscription fetch
+    setIsLoadingSoft(false);
     try {
       if (!sessionEmail) {
         console.warn("No email found in session storage for subscription fetch.");
-        setIsLoading(false);
         return null;
       }
       const response = await axios.get(
@@ -229,8 +301,6 @@ function InterviewMaker() {
       console.error("Error fetching user subscription details:", error);
       setCurrentPlan(null);
       return null;
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -239,13 +309,13 @@ function InterviewMaker() {
     const prompt = `You are an expert interviewer.
 Generate a JSON object with two keys: "questions" and "summary".
 - "questions" should be an array of ${numQuestions} objects. Each object must include:
-    - "question": an interview question based on the details below,
+    - "question": an interview question based on the details below, with a difficulty of ${formData.difficulty},
     - "answer": a detailed expected answer,
     - "marks": assign the corresponding mark from the following marks array: [${formData.marks.join(', ')}].
 - "summary" should be an object containing:
-    - "total_time": the total time for the interview (in minutes) as provided,
-    - "num_questions": the total number of questions,
-    - "total_marks": the sum of marks for all questions.
+    - "total_time": "${formData.total_time}" minutes,
+    - "num_questions": ${numQuestions},
+    - "total_marks": ${totalMarks}.
 Use these details:
 Job Title: ${formData.job_title}
 Job Description: ${formData.job_description}
@@ -254,23 +324,23 @@ Technical Skills: ${formData.technical_skills}
 Soft Skills: ${formData.soft_skills}
 Return only valid JSON.`;
 
-    const chatGPTResponse = await axios.post(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        model: "qwen/qwq-32b:free",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-        },
-      }
-    );
-
-    const content = chatGPTResponse.data.choices[0].message.content;
     try {
+      const chatGPTResponse = await axios.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          model: "qwen/qwq-32b:free",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${OPENAI_API_KEY}`,
+          },
+        }
+      );
+
+      const content = chatGPTResponse.data.choices[0].message.content;
       const parsed = JSON.parse(content);
       if (parsed.questions && Array.isArray(parsed.questions)) {
         return parsed;
@@ -293,9 +363,12 @@ Return only valid JSON.`;
           if (result.summary) {
             setPreviewSummary(result.summary);
           }
+        } else {
+          toast.error('No questions generated. Please ensure all fields are filled.');
         }
       } catch (error) {
         console.error('Error generating questions:', error);
+        toast.error('Failed to generate questions. Please try again.');
       }
     }
     setIsSubmitting(false);
@@ -457,18 +530,16 @@ Return only valid JSON.`;
     return (
       <div className="min-h-screen bg-gray-900 text-white p-6">
         <div className="flex justify-start mb-6 pt-1">
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => navigate('/company-dashboard')}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    Back to Dashboard
-                  </motion.button>
-                </div>
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => navigate('/company-dashboard')}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Back to Dashboard
+          </motion.button>
+        </div>
         <h1 className="text-3xl font-bold mb-8 text-center">Choose Interview Type</h1>
-        
-        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
           <div className="bg-purple-800 rounded-lg p-8 flex flex-col items-center shadow-lg hover:shadow-xl transition-all">
             <div className="bg-purple-700 p-4 rounded-full mb-4">
@@ -581,28 +652,106 @@ Return only valid JSON.`;
                 <label className="block text-gray-300 mb-2 flex items-center">
                   <FileText size={16} className="mr-2" /> Technical Skills
                 </label>
-                <input
-                  type="text"
-                  name="technical_skills"
-                  value={formData.technical_skills}
-                  onChange={handleInputChange}
-                  placeholder="e.g., React, Node.js, AWS"
-                  className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
-                />
+                <div className="flex items-center">
+                  <input
+                    type="text"
+                    name="technical_skills"
+                    value={formData.technical_skills}
+                    onChange={handleInputChange}
+                    placeholder="e.g., React, Node.js, AWS"
+                    className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={generateTechnicalSkills}
+                    disabled={isLoadingTech}
+                    className={`ml-2 bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md font-medium flex items-center ${
+                      isLoadingTech ? 'opacity-70 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {isLoadingTech ? (
+                      <>
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Generating...
+                      </>
+                    ) : (
+                      <>Generate</>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
             <div>
               <label className="block text-gray-300 mb-2 flex items-center">
                 <FileText size={16} className="mr-2" /> Soft Skills
               </label>
-              <input
-                type="text"
-                name="soft_skills"
-                value={formData.soft_skills}
-                onChange={handleInputChange}
-                placeholder="e.g., communication, leadership"
-                className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
-              />
+              <div className="flex items-center">
+                <input
+                  type="text"
+                  name="soft_skills"
+                  value={formData.soft_skills}
+                  onChange={handleInputChange}
+                  placeholder="e.g., communication, leadership"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={generateSoftSkills}
+                  disabled={isLoadingSoft}
+                  className={`ml-2 bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md font-medium flex items-center ${
+                    isLoadingSoft ? 'opacity-70 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {isLoadingSoft ? (
+                    <>
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      Generating...
+                    </>
+                  ) : (
+                    <>Generate</>
+                  )}
+                </button>
+              </div>
             </div>
             <div>
               <label className="block text-gray-300 mb-2 flex items-center">
@@ -634,9 +783,7 @@ Return only valid JSON.`;
               <div>
                 <label className="block text-gray-300 mb-2">
                   Marks per Question{" "}
-                  <span className="text-gray-400 text-sm ml-2">
-                    (AI will generate questions based on these marks)
-                  </span>
+                  <span className="text-gray-400 text-sm ml-2">(AI will generate based on these)</span>
                 </label>
                 {formData.marks.map((mark, index) => (
                   <div key={index} className="flex items-center mb-2">
@@ -667,6 +814,20 @@ Return only valid JSON.`;
                 </button>
                 <div className="mt-2 text-sm text-gray-300">Total Marks: {totalMarks}</div>
               </div>
+            </div>
+            <div>
+              <label className="block text-gray-300 mb-2">Difficulty Level</label>
+              <select
+                name="difficulty"
+                value={formData.difficulty}
+                onChange={handleInputChange}
+                className="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 text-white"
+              >
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
+                <option value="Mixed">Mixed</option>
+              </select>
             </div>
             <div>
               <label className="block text-gray-300 mb-2">Job Description</label>
